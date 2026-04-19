@@ -1,8 +1,0 @@
-com/bibleapp/Main.class
-com/bibleapp/data/DataStore.class
-module-info.class
-com/bibleapp/pages/StatisticsPage.class
-com/bibleapp/App.class
-com/bibleapp/pages/MemorizationPage.class
-com/bibleapp/pages/ReadingPage.class
-com/bibleapp/pages/ReadingPlansPage.class
