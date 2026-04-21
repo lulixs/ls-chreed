@@ -14,7 +14,12 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * HTTP client for bible-api.com. No auth required; free tier rate-limited
@@ -52,6 +57,83 @@ public class BibleApiClient {
     public BiblePassage getRandomVerse(String translation, String bookIds) throws BibleApiException {
         String url = BASE_URL + "/data/" + translation + "/random/" + bookIds;
         return parsePassage(sendRequest(url));
+    }
+
+    public List<BibleTranslation> getTranslations() throws BibleApiException {
+        try {
+            JSONObject root = (JSONObject) new JSONParser().parse(sendRequest(BASE_URL + "/data"));
+            JSONArray translationsJson = (JSONArray) root.get("translations");
+            List<BibleTranslation> translations = new ArrayList<>();
+            if (translationsJson != null) {
+                for (Object item : translationsJson) {
+                    JSONObject translation = (JSONObject) item;
+                    translations.add(new BibleTranslation(
+                            asString(translation.get("identifier")),
+                            asString(translation.get("name")),
+                            asString(translation.get("language")),
+                            asString(translation.get("license")),
+                            List.of()
+                    ));
+                }
+            }
+            return translations;
+        } catch (ParseException e) {
+            throw new BibleApiException("Failed to parse translation metadata: " + e.getMessage(), e);
+        }
+    }
+
+    public BibleTranslation getTranslationDetails(String translationId) throws BibleApiException {
+        try {
+            JSONObject root = (JSONObject) new JSONParser().parse(sendRequest(BASE_URL + "/data/" + translationId));
+            JSONObject translation = (JSONObject) root.get("translation");
+            JSONArray booksJson = (JSONArray) root.get("books");
+
+            List<String> books = new ArrayList<>();
+            if (booksJson != null) {
+                for (Object item : booksJson) {
+                    JSONObject book = (JSONObject) item;
+                    books.add(asString(book.get("name")));
+                }
+            }
+
+            return new BibleTranslation(
+                    translation == null ? translationId : asString(translation.get("identifier")),
+                    translation == null ? null : asString(translation.get("name")),
+                    translation == null ? null : asString(translation.get("language")),
+                    translation == null ? null : asString(translation.get("license")),
+                    books
+            );
+        } catch (ParseException e) {
+            throw new BibleApiException("Failed to parse translation details for " + translationId + ": " + e.getMessage(), e);
+        }
+    }
+
+    public List<BibleTranslation> getTranslationsSupportingBooks(List<String> requiredBooks) throws BibleApiException {
+        Set<String> normalizedRequired = requiredBooks.stream()
+                .map(BibleApiClient::normalizeBookName)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<BibleTranslation> supported = new ArrayList<>();
+        for (BibleTranslation translation : getTranslations()) {
+            if (!"english".equalsIgnoreCase(translation.language())) {
+                continue;
+            }
+
+            BibleTranslation detailed = getTranslationDetails(translation.identifier());
+            Set<String> supportedBooks = detailed.books().stream()
+                    .map(BibleApiClient::normalizeBookName)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+
+            if (supportedBooks.containsAll(normalizedRequired)) {
+                supported.add(detailed);
+            }
+        }
+
+        supported.sort(Comparator.comparing(
+                translation -> translation.name() == null ? translation.identifier() : translation.name(),
+                String.CASE_INSENSITIVE_ORDER
+        ));
+        return supported;
     }
 
     private String sendRequest(String url) throws BibleApiException {
@@ -141,5 +223,9 @@ public class BibleApiClient {
         if (o instanceof Number n) return n.intValue();
         if (o == null) return 0;
         return Integer.parseInt(o.toString());
+    }
+
+    private static String normalizeBookName(String bookName) {
+        return bookName == null ? "" : bookName.trim().toLowerCase(Locale.ROOT);
     }
 }
