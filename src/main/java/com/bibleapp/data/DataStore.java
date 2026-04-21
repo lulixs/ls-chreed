@@ -65,6 +65,10 @@ public class DataStore {
     private static final String KEY_VERSE_TEXT       = "text";
     private static final String KEY_VERSE_DIFFICULTY = "difficulty";
 
+    // ── Legacy key (renamed in this PR — kept for migration) ──────────────────
+
+    private static final String KEY_LEGACY_MEMORIZATION = "memorized_verses";
+
     // ── Default values ────────────────────────────────────────────────────────
 
     private static final String DEFAULT_TRANSLATION = "NIV";
@@ -73,14 +77,27 @@ public class DataStore {
     // Low-level load / save
     // =========================================================================
 
-    /** Load the full JSON object from disk. Returns a fresh default if absent. */
+    /**
+     * Load the full JSON object from disk.
+     *
+     * Bug fix 1: if the file does not exist, defaults are written to disk
+     * immediately so the file is present after the very first launch.
+     *
+     * Bug fix 2: after reading an existing file, legacy key names are migrated
+     * so that data written by older builds is not silently lost.
+     */
     public static JSONObject load() {
         if (!Files.exists(DATA_FILE)) {
-            return defaultData();
+            // Bug fix 1: persist defaults on first run so the file is created
+            JSONObject defaults = defaultData();
+            save(defaults);
+            return defaults;
         }
         try (Reader reader = new FileReader(DATA_FILE.toFile())) {
             JSONParser parser = new JSONParser();
-            return (JSONObject) parser.parse(reader);
+            JSONObject data = (JSONObject) parser.parse(reader);
+            migrateLegacyKeys(data); // Bug fix 2: rename old keys in place
+            return data;
         } catch (Exception e) {
             System.err.println("DataStore: failed to load – " + e.getMessage());
             return defaultData();
@@ -234,6 +251,21 @@ public class DataStore {
         data.put(KEY_STATISTICS, stats);
 
         return data;
+    }
+
+    /**
+     * Bug fix 2: migrates data files written by older builds.
+     * The memorization-list key was renamed from "memorized_verses" to
+     * "memorization_list". Detect the old key and rename it in place so
+     * existing user data is not silently lost after an upgrade.
+     */
+    @SuppressWarnings("unchecked")
+    private static void migrateLegacyKeys(JSONObject data) {
+        if (data.containsKey(KEY_LEGACY_MEMORIZATION)
+                && !data.containsKey(KEY_MEMORIZATION)) {
+            data.put(KEY_MEMORIZATION, data.remove(KEY_LEGACY_MEMORIZATION));
+            save(data); // persist the migration immediately
+        }
     }
 
     /** Gets (or creates) a JSONArray for the given key, mutating {@code data}. */
