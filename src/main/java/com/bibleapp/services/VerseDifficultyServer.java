@@ -1,32 +1,32 @@
 package com.bibleapp.services;
-import com.bibleapp.data.UserData;
+import com.bibleapp.data.MemorizedVerse;
 
 // The serving system that decides between the correct difficulty
 public class VerseDifficultyServer {
     private Difficulty difficulty;
 
     // The 4 types of difficulties and switch between them
-    public void setDifficulty(UserData user) {
-        int level = user.getDifficulty();
-        String verse = user.getText();
+    public void setDifficulty(MemorizedVerse memVerse) {
+        int level = memVerse.getDifficulty();
+        String verse = memVerse.getText();
 
         switch (level) {
-            case UserData.DIFFICULTY_BEGINNER:
+            case MemorizedVerse.:
                 difficulty = new CopyDownDifficulty(verse);
                 break;
 
             //For Ever Other A and B They are both considered Intermediate
             // because we only have 3 difficulty levels in the UserData.java
             // I think we would need 4 different levels though.
-            case UserData.DIFFICULTY_INTERMEDIATE: 
+            case MemorizedVerse.DIFFICULTY_INTERMEDIATE: 
                 difficulty = new EveryOtherDifficultyA(verse);
                 break;
 
-            case UserData.DIFFICULTY_INTERMEDIATE:
+            case MemorizedVerse.DIFFICULTY_INTERMEDIATE:
                 difficulty = new EveryOtherDifficultyB(verse);
                 break;
 
-            case UserData.DIFFICULTY_ADVANCED:
+            case MemorizedVerse.DIFFICULTY_ADVANCED:
                 difficulty = new FullMemory(verse);
                 break;
         }
