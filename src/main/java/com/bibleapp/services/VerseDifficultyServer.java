@@ -15,9 +15,6 @@ public class VerseDifficultyServer {
                 difficulty = new CopyDownDifficulty(verse);
                 break;
 
-            //For Ever Other A and B They are both considered Intermediate
-            // because we only have 3 difficulty levels in the UserData.java
-            // I think we would need 4 different levels though.
             case MemorizedVerse.DIFFICULTY_EVERY_OTHER_A: 
                 difficulty = new EveryOtherDifficultyA(verse);
                 break;
