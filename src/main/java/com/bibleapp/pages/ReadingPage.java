@@ -17,6 +17,7 @@ import javafx.util.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 /**
  * Bible reading page with selectors for translation, book, and chapter.
@@ -52,6 +53,32 @@ public class ReadingPage extends VBox {
             new BibleTranslation("dra", "Douay-Rheims 1899 American Edition", "English", "Public Domain", BOOKS),
             new BibleTranslation("kjv", "King James Version", "English", "Public Domain", BOOKS),
             new BibleTranslation("web", "World English Bible", "English", "Public Domain", BOOKS)
+    );
+
+    // Maps each book to its number of chapters so the spinner can't go out of bounds
+    private static final Map<String, Integer> CHAPTER_COUNTS = Map.ofEntries(
+            Map.entry("Genesis", 50), Map.entry("Exodus", 40), Map.entry("Leviticus", 27),
+            Map.entry("Numbers", 36), Map.entry("Deuteronomy", 34), Map.entry("Joshua", 24),
+            Map.entry("Judges", 21), Map.entry("Ruth", 4), Map.entry("1 Samuel", 31),
+            Map.entry("2 Samuel", 24), Map.entry("1 Kings", 22), Map.entry("2 Kings", 25),
+            Map.entry("1 Chronicles", 29), Map.entry("2 Chronicles", 36), Map.entry("Ezra", 10),
+            Map.entry("Nehemiah", 13), Map.entry("Esther", 10), Map.entry("Job", 42),
+            Map.entry("Psalms", 150), Map.entry("Proverbs", 31), Map.entry("Ecclesiastes", 12),
+            Map.entry("Song of Solomon", 8), Map.entry("Isaiah", 66), Map.entry("Jeremiah", 52),
+            Map.entry("Lamentations", 5), Map.entry("Ezekiel", 48), Map.entry("Daniel", 12),
+            Map.entry("Hosea", 14), Map.entry("Joel", 3), Map.entry("Amos", 9),
+            Map.entry("Obadiah", 1), Map.entry("Jonah", 4), Map.entry("Micah", 7),
+            Map.entry("Nahum", 3), Map.entry("Habakkuk", 3), Map.entry("Zephaniah", 3),
+            Map.entry("Haggai", 2), Map.entry("Zechariah", 14), Map.entry("Malachi", 4),
+            Map.entry("Matthew", 28), Map.entry("Mark", 16), Map.entry("Luke", 24),
+            Map.entry("John", 21), Map.entry("Acts", 28), Map.entry("Romans", 16),
+            Map.entry("1 Corinthians", 16), Map.entry("2 Corinthians", 13), Map.entry("Galatians", 6),
+            Map.entry("Ephesians", 6), Map.entry("Philippians", 4), Map.entry("Colossians", 4),
+            Map.entry("1 Thessalonians", 5), Map.entry("2 Thessalonians", 3), Map.entry("1 Timothy", 6),
+            Map.entry("2 Timothy", 4), Map.entry("Titus", 3), Map.entry("Philemon", 1),
+            Map.entry("Hebrews", 13), Map.entry("James", 5), Map.entry("1 Peter", 5),
+            Map.entry("2 Peter", 3), Map.entry("1 John", 5), Map.entry("2 John", 1),
+            Map.entry("3 John", 1), Map.entry("Jude", 1), Map.entry("Revelation", 22)
     );
 
     private final ComboBox<BibleTranslation> translationCombo;
@@ -103,9 +130,23 @@ public class ReadingPage extends VBox {
         bookCombo.getStyleClass().add("selector-combo");
         bookCombo.getItems().setAll(BOOKS);
 
-        chapterSpinner = new Spinner<>(1, 150, 1);
+        // Keep a reference to the factory so we can update its max when the book changes
+        SpinnerValueFactory.IntegerSpinnerValueFactory spinnerFactory =
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 150, 1);
+        chapterSpinner = new Spinner<>(spinnerFactory);
         chapterSpinner.setPrefWidth(70);
         chapterSpinner.getStyleClass().add("chapter-spinner");
+
+        // When the user picks a book, cap the spinner to that book's chapter count.
+        // If the current chapter is now out of range, drop it down to the new max.
+        bookCombo.valueProperty().addListener((obs, oldBook, newBook) -> {
+            if (newBook == null) return;
+            int maxChapters = CHAPTER_COUNTS.getOrDefault(newBook, 1);
+            spinnerFactory.setMax(maxChapters);
+            if (chapterSpinner.getValue() > maxChapters) {
+                spinnerFactory.setValue(maxChapters);
+            }
+        });
 
         selectorRow.getChildren().addAll(translationCombo, bookCombo, chapterSpinner);
 
