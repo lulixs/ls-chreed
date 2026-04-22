@@ -1,5 +1,6 @@
 package com.bibleapp;
 
+import com.bibleapp.data.DataStore;
 import javafx.application.Application;
 import javafx.scene.Scene;
 import javafx.scene.layout.BorderPane;
@@ -9,6 +10,11 @@ public class Main extends Application {
 
     @Override
     public void start(Stage stage) {
+        // Print the user data JSON so it can be eyeballed in the terminal.
+        // On first launch this also triggers creation of the file with empty
+        // defaults; on subsequent launches it simply reads what's already there.
+        DataStore.printSnapshot();
+
         BorderPane root = new BorderPane();
 
         App app = new App();
