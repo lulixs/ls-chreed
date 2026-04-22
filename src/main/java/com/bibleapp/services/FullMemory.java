@@ -1,5 +1,6 @@
 package com.bibleapp.services;
 
+// Hides the entire verse so that User must recall it fully
 public class FullMemory implements Difficulty {
     private int numBlanks;
     private String displayVerse;
