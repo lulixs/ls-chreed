@@ -40,6 +40,32 @@ public class ReadingPage extends VBox {
         chapterSpinner.setPrefWidth(70);
         chapterSpinner.getStyleClass().add("chapter-spinner");
 
+        // Start with a safe default range (1–150); it will be narrowed on selection.
+        SpinnerValueFactory.IntegerSpinnerValueFactory spinnerFactory =
+                new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 150, 1);
+        chapterSpinner = new Spinner<>(spinnerFactory);
+        chapterSpinner.setPrefWidth(70);
+        chapterSpinner.getStyleClass().add("chapter-spinner");
+        // Make the spinner editable so users can also type a number directly,
+        // but clamp typed values on focus-lost.
+        chapterSpinner.setEditable(true);
+
+         // -------------------------------------------------------------------
+        // BUG FIX: update the chapter spinner's max whenever the book changes
+        // -------------------------------------------------------------------
+        bookCombo.getSelectionModel().selectedItemProperty().addListener(
+                (obs, oldBook, newBook) -> {
+                    if (newBook == null) return;
+
+                    // Clamp the current chapter value so it stays in range
+                    int currentChapter = chapterSpinner.getValue();
+                    int clampedChapter = Math.min(currentChapter, maxChapters);
+
+                    spinnerFactory.setMax(maxChapters);
+                    spinnerFactory.setValue(clampedChapter);
+                });
+
+
         selectorRow.getChildren().addAll(translationCombo, bookCombo, chapterSpinner);
 
         // Text area for scripture display
