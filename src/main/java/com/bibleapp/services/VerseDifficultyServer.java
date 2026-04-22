@@ -11,22 +11,22 @@ public class VerseDifficultyServer {
         String verse = memVerse.getText();
 
         switch (level) {
-            case MemorizedVerse.:
+            case MemorizedVerse.DIFFICULTY_COPY_DOWN:
                 difficulty = new CopyDownDifficulty(verse);
                 break;
 
             //For Ever Other A and B They are both considered Intermediate
             // because we only have 3 difficulty levels in the UserData.java
             // I think we would need 4 different levels though.
-            case MemorizedVerse.DIFFICULTY_INTERMEDIATE: 
+            case MemorizedVerse.DIFFICULTY_EVERY_OTHER_A: 
                 difficulty = new EveryOtherDifficultyA(verse);
                 break;
 
-            case MemorizedVerse.DIFFICULTY_INTERMEDIATE:
+            case MemorizedVerse.DIFFICULTY_EVERY_OTHER_B:
                 difficulty = new EveryOtherDifficultyB(verse);
                 break;
 
-            case MemorizedVerse.DIFFICULTY_ADVANCED:
+            case MemorizedVerse.DIFFICULTY_FULL_MEMORY:
                 difficulty = new FullMemory(verse);
                 break;
         }
