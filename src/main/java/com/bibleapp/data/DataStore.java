@@ -12,40 +12,58 @@ import java.util.List;
 /**
  * DataStore.java
  * --------------
- * Central data layer – readable and writable from anywhere in the program.
+ * Central data layer for the app. Loads and saves a single JSON file that
+ * holds all user-specific state. Callable from anywhere in the program.
  *
- * Saved to: [user home directory]/bible-app-data.json
+ * File location: [user home directory]/bible-app-data.json
  *
- * JSON structure
- * ──────────────
+ * The file is created exactly once — on first launch, with empty defaults —
+ * and persists across runs. Every subsequent launch reads the existing file
+ * as-is; no values are filled in or overwritten behind the user's back.
+ *
+ * JSON structure on first run
+ * ───────────────────────────
  * {
- *   "preferred_translation": "NIV",
- *   "memorization_list": [
- *     {
- *       "reference": "John 3:16",
- *       "text":      "For God so loved the world…",
- *       "difficulty": 1
- *     },
- *     ...
- *   ],
- *   "reading_plans": [...],
+ *   "schema_version":        1,
+ *   "preferred_translation": "",
+ *   "memorization_list":     [],
+ *   "reading_plans":         [],
  *   "statistics": {
- *     "chapters_read": 0,
+ *     "chapters_read":  0,
  *     "current_streak": 0
  *   }
  * }
+ *
+ * The "schema_version" field tags the layout of the file. When load() reads
+ * a file whose version does not match {@link #CURRENT_SCHEMA_VERSION} (for
+ * example, a file written by a pre-versioning build), it is overwritten
+ * with a fresh empty scaffold and a warning is printed to stderr. Bump the
+ * constant any time this layout changes incompatibly.
+ *
+ * A populated memorization entry looks like:
+ * {
+ *   "id":         "John.3.16",
+ *   "book":       "John",
+ *   "chapter":    3,
+ *   "verse":      16,
+ *   "text":       "For God so loved the world…",
+ *   "difficulty": 1
+ * }
+ *
+ * The composite "id" field ("{book}.{chapter}.{verse}") uniquely identifies
+ * a verse and is used as the dedup / lookup key — see {@link MemorizedVerse}.
  *
  * How to use from any page
  * ────────────────────────
  *   // Read
  *   String translation = DataStore.getPreferredTranslation();
- *   List<UserData> verses = DataStore.getMemorizationList();
+ *   List<MemorizedVerse> verses = DataStore.getMemorizationList();
  *
  *   // Write
  *   DataStore.setPreferredTranslation("ESV");
- *   DataStore.addVerse(new UserData("John 3:16", "For God so loved…", 1));
- *   DataStore.updateVerseDifficulty("John 3:16", 2);
- *   DataStore.removeVerse("John 3:16");
+ *   DataStore.addVerse(new MemorizedVerse("John", 3, 16, "For God so loved…", 1));
+ *   DataStore.updateVerseDifficulty("John.3.16", 2);
+ *   DataStore.removeVerse("John.3.16");
  */
 public class DataStore {
 
@@ -55,23 +73,27 @@ public class DataStore {
         System.getProperty("user.home"), "bible-app-data.json"
     );
 
-    // ── JSON keys ─────────────────────────────────────────────────────────────
+    // ── Schema version ────────────────────────────────────────────────────────
 
-    private static final String KEY_TRANSLATION      = "preferred_translation";
-    private static final String KEY_MEMORIZATION     = "memorization_list";
-    private static final String KEY_READING_PLANS    = "reading_plans";
-    private static final String KEY_STATISTICS       = "statistics";
-    private static final String KEY_VERSE_REFERENCE  = "reference";
+    /** Layout version of the JSON file. Bump on any incompatible change. */
+    private static final int CURRENT_SCHEMA_VERSION = 1;
+
+    // ── Top-level JSON keys ───────────────────────────────────────────────────
+
+    private static final String KEY_SCHEMA_VERSION = "schema_version";
+    private static final String KEY_TRANSLATION    = "preferred_translation";
+    private static final String KEY_MEMORIZATION   = "memorization_list";
+    private static final String KEY_READING_PLANS  = "reading_plans";
+    private static final String KEY_STATISTICS     = "statistics";
+
+    // ── Memorization entry keys ───────────────────────────────────────────────
+
+    private static final String KEY_VERSE_ID         = "id";
+    private static final String KEY_VERSE_BOOK       = "book";
+    private static final String KEY_VERSE_CHAPTER    = "chapter";
+    private static final String KEY_VERSE_NUMBER     = "verse";
     private static final String KEY_VERSE_TEXT       = "text";
     private static final String KEY_VERSE_DIFFICULTY = "difficulty";
-
-    // ── Legacy key (renamed in this PR — kept for migration) ──────────────────
-
-    private static final String KEY_LEGACY_MEMORIZATION = "memorized_verses";
-
-    // ── Default values ────────────────────────────────────────────────────────
-
-    private static final String DEFAULT_TRANSLATION = "NIV";
 
     // =========================================================================
     // Low-level load / save
@@ -80,28 +102,41 @@ public class DataStore {
     /**
      * Load the full JSON object from disk.
      *
-     * Bug fix 1: if the file does not exist, defaults are written to disk
-     * immediately so the file is present after the very first launch.
-     *
-     * Bug fix 2: after reading an existing file, legacy key names are migrated
-     * so that data written by older builds is not silently lost.
+     * On first run (file missing), writes an empty scaffold and returns it.
+     * On every subsequent run, reads the existing file — unless its
+     * schema_version doesn't match {@link #CURRENT_SCHEMA_VERSION}, in which
+     * case the file is replaced with a fresh empty scaffold.
      */
     public static JSONObject load() {
         if (!Files.exists(DATA_FILE)) {
-            // Bug fix 1: persist defaults on first run so the file is created
-            JSONObject defaults = defaultData();
-            save(defaults);
-            return defaults;
+            JSONObject scaffold = emptyUserData();
+            save(scaffold);
+            return scaffold;
         }
         try (Reader reader = new FileReader(DATA_FILE.toFile())) {
             JSONParser parser = new JSONParser();
             JSONObject data = (JSONObject) parser.parse(reader);
-            migrateLegacyKeys(data); // Bug fix 2: rename old keys in place
+            if (!isCurrentSchema(data)) {
+                System.err.println(
+                    "DataStore: user data file at " + DATA_FILE
+                    + " is from an older schema and has been reset.");
+                JSONObject scaffold = emptyUserData();
+                save(scaffold);
+                return scaffold;
+            }
             return data;
         } catch (Exception e) {
             System.err.println("DataStore: failed to load – " + e.getMessage());
-            return defaultData();
+            return emptyUserData();
         }
+    }
+
+    /** True if the given JSON carries the current schema version tag. */
+    private static boolean isCurrentSchema(JSONObject data) {
+        Object v = data.get(KEY_SCHEMA_VERSION);
+        if (v instanceof Long l)    return l.intValue() == CURRENT_SCHEMA_VERSION;
+        if (v instanceof Integer i) return i == CURRENT_SCHEMA_VERSION;
+        return false;
     }
 
     /** Write the full JSON object back to disk. */
@@ -113,25 +148,28 @@ public class DataStore {
         }
     }
 
+    /**
+     * Prints the current contents of the user data file to stdout. Called at
+     * startup so the JSON can be eyeballed in the terminal to confirm the
+     * file was created / persisted correctly.
+     */
+    public static void printSnapshot() {
+        JSONObject data = load();
+        System.out.println("User data file: " + DATA_FILE);
+        System.out.println(data.toJSONString());
+    }
+
     // =========================================================================
     // Preferred Translation
     // =========================================================================
 
-    /**
-     * Returns the user's preferred Bible translation (e.g. "NIV", "ESV").
-     * Defaults to "NIV" if not yet set.
-     */
+    /** Returns the user's preferred translation, or "" if not yet chosen. */
     public static String getPreferredTranslation() {
         JSONObject data = load();
         Object val = data.get(KEY_TRANSLATION);
-        return (val instanceof String s && !s.isBlank()) ? s : DEFAULT_TRANSLATION;
+        return (val instanceof String s) ? s : "";
     }
 
-    /**
-     * Saves the user's preferred Bible translation.
-     *
-     * @param translation e.g. "NIV", "ESV", "KJV"
-     */
     @SuppressWarnings("unchecked")
     public static void setPreferredTranslation(String translation) {
         JSONObject data = load();
@@ -143,22 +181,21 @@ public class DataStore {
     // Memorization List
     // =========================================================================
 
-    /**
-     * Returns the full memorization list as Java objects.
-     * Each {@link UserData} carries the reference, verse text, and difficulty.
-     */
-    public static List<UserData> getMemorizationList() {
+    /** Returns the full memorization list as {@link MemorizedVerse} objects. */
+    public static List<MemorizedVerse> getMemorizationList() {
         JSONObject data = load();
         JSONArray arr = getOrCreateArray(data, KEY_MEMORIZATION);
-        List<UserData> result = new ArrayList<>();
+        List<MemorizedVerse> result = new ArrayList<>();
         for (Object obj : arr) {
             if (obj instanceof JSONObject entry) {
-                String ref  = getString(entry, KEY_VERSE_REFERENCE, "");
-                String text = getString(entry, KEY_VERSE_TEXT, "");
-                int diff    = getInt(entry, KEY_VERSE_DIFFICULTY,
-                                    UserData.DIFFICULTY_BEGINNER);
-                if (!ref.isBlank()) {
-                    result.add(new UserData(ref, text, diff));
+                String book  = getString(entry, KEY_VERSE_BOOK, "");
+                int chapter  = getInt(entry, KEY_VERSE_CHAPTER, 0);
+                int verseNum = getInt(entry, KEY_VERSE_NUMBER, 0);
+                String text  = getString(entry, KEY_VERSE_TEXT, "");
+                int diff     = getInt(entry, KEY_VERSE_DIFFICULTY,
+                                     MemorizedVerse.DIFFICULTY_COPY_DOWN);
+                if (!book.isBlank() && chapter > 0 && verseNum > 0) {
+                    result.add(new MemorizedVerse(book, chapter, verseNum, text, diff));
                 }
             }
         }
@@ -166,25 +203,24 @@ public class DataStore {
     }
 
     /**
-     * Adds a verse to the memorization list.
-     * If a verse with the same reference already exists it is replaced.
-     *
-     * @param verse {@link UserData} to add
+     * Adds a verse to the memorization list. If an entry with the same ID
+     * already exists, it is replaced.
      */
     @SuppressWarnings("unchecked")
-    public static void addVerse(UserData verse) {
+    public static void addVerse(MemorizedVerse verse) {
         JSONObject data = load();
         JSONArray arr = getOrCreateArray(data, KEY_MEMORIZATION);
 
-        // Remove existing entry with the same reference (avoid duplicates)
         arr.removeIf(obj ->
             obj instanceof JSONObject entry &&
-            verse.getReference().equalsIgnoreCase(getString(entry, KEY_VERSE_REFERENCE, ""))
+            verse.getId().equalsIgnoreCase(getString(entry, KEY_VERSE_ID, ""))
         );
 
-        // Append new entry
         JSONObject entry = new JSONObject();
-        entry.put(KEY_VERSE_REFERENCE,  verse.getReference());
+        entry.put(KEY_VERSE_ID,         verse.getId());
+        entry.put(KEY_VERSE_BOOK,       verse.getBook());
+        entry.put(KEY_VERSE_CHAPTER,    (long) verse.getChapter());
+        entry.put(KEY_VERSE_NUMBER,     (long) verse.getVerse());
         entry.put(KEY_VERSE_TEXT,       verse.getText());
         entry.put(KEY_VERSE_DIFFICULTY, (long) verse.getDifficulty());
         arr.add(entry);
@@ -193,38 +229,29 @@ public class DataStore {
         save(data);
     }
 
-    /**
-     * Removes a verse from the memorization list by its reference.
-     *
-     * @param reference e.g. "John 3:16"
-     */
-    public static void removeVerse(String reference) {
+    /** Removes a verse from the memorization list by its composite ID. */
+    public static void removeVerse(String id) {
         JSONObject data = load();
         JSONArray arr = getOrCreateArray(data, KEY_MEMORIZATION);
         arr.removeIf(obj ->
             obj instanceof JSONObject entry &&
-            reference.equalsIgnoreCase(getString(entry, KEY_VERSE_REFERENCE, ""))
+            id.equalsIgnoreCase(getString(entry, KEY_VERSE_ID, ""))
         );
         data.put(KEY_MEMORIZATION, arr);
         save(data);
     }
 
     /**
-     * Updates the difficulty level for an existing verse.
-     * Does nothing if the reference is not found.
-     *
-     * @param reference  e.g. "John 3:16"
-     * @param difficulty one of {@link UserData#DIFFICULTY_BEGINNER},
-     *                   {@link UserData#DIFFICULTY_INTERMEDIATE}, or
-     *                   {@link UserData#DIFFICULTY_ADVANCED}
+     * Updates the difficulty level for an existing verse, identified by its
+     * composite ID. Does nothing if the ID is not found.
      */
     @SuppressWarnings("unchecked")
-    public static void updateVerseDifficulty(String reference, int difficulty) {
+    public static void updateVerseDifficulty(String id, int difficulty) {
         JSONObject data = load();
         JSONArray arr = getOrCreateArray(data, KEY_MEMORIZATION);
         for (Object obj : arr) {
             if (obj instanceof JSONObject entry &&
-                reference.equalsIgnoreCase(getString(entry, KEY_VERSE_REFERENCE, ""))) {
+                id.equalsIgnoreCase(getString(entry, KEY_VERSE_ID, ""))) {
                 entry.put(KEY_VERSE_DIFFICULTY, (long) difficulty);
                 break;
             }
@@ -237,13 +264,14 @@ public class DataStore {
     // Private helpers
     // =========================================================================
 
-    /** Returns the default data structure for a brand-new user. */
+    /** Empty user-data scaffold — what a brand-new file looks like on first run. */
     @SuppressWarnings("unchecked")
-    private static JSONObject defaultData() {
+    private static JSONObject emptyUserData() {
         JSONObject data = new JSONObject();
-        data.put(KEY_TRANSLATION,   DEFAULT_TRANSLATION);
-        data.put(KEY_MEMORIZATION,  new JSONArray());
-        data.put(KEY_READING_PLANS, new JSONArray());
+        data.put(KEY_SCHEMA_VERSION, (long) CURRENT_SCHEMA_VERSION);
+        data.put(KEY_TRANSLATION,    "");
+        data.put(KEY_MEMORIZATION,   new JSONArray());
+        data.put(KEY_READING_PLANS,  new JSONArray());
 
         JSONObject stats = new JSONObject();
         stats.put("chapters_read",  0L);
@@ -253,22 +281,6 @@ public class DataStore {
         return data;
     }
 
-    /**
-     * Bug fix 2: migrates data files written by older builds.
-     * The memorization-list key was renamed from "memorized_verses" to
-     * "memorization_list". Detect the old key and rename it in place so
-     * existing user data is not silently lost after an upgrade.
-     */
-    @SuppressWarnings("unchecked")
-    private static void migrateLegacyKeys(JSONObject data) {
-        if (data.containsKey(KEY_LEGACY_MEMORIZATION)
-                && !data.containsKey(KEY_MEMORIZATION)) {
-            data.put(KEY_MEMORIZATION, data.remove(KEY_LEGACY_MEMORIZATION));
-            save(data); // persist the migration immediately
-        }
-    }
-
-    /** Gets (or creates) a JSONArray for the given key, mutating {@code data}. */
     @SuppressWarnings("unchecked")
     private static JSONArray getOrCreateArray(JSONObject data, String key) {
         Object val = data.get(key);
