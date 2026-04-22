@@ -45,7 +45,11 @@ public class BibleApiClient {
     public BiblePassage getPassage(String reference, String translation) throws BibleApiException {
         String encodedRef = URLEncoder.encode(reference.trim(), StandardCharsets.UTF_8)
                                       .replace("+", "%20");
-        String url = BASE_URL + "/" + encodedRef + "?translation=" + translation;
+        // single_chapter_book_matching=indifferent so "Jude 1" returns the whole
+        // book instead of just verse 1 (same for Obadiah, Philemon, 2 John, 3 John).
+        String url = BASE_URL + "/" + encodedRef
+                + "?translation=" + translation
+                + "&single_chapter_book_matching=indifferent";
         return parsePassage(sendRequest(url));
     }
 
