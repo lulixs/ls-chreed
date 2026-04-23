@@ -3,6 +3,7 @@ package com.bibleapp.pages;
 import com.bibleapp.services.BibleApiClient;
 import com.bibleapp.services.BibleApiException;
 import com.bibleapp.services.BiblePassage;
+import com.bibleapp.services.BibleVerse;
 import com.bibleapp.services.BibleTranslation;
 
 import javafx.animation.PauseTransition;
@@ -311,7 +312,20 @@ public class ReadingPage extends VBox {
         }
 
         builder.append("\n\n");
-        builder.append(passage.getText() == null ? "" : passage.getText().trim());
+        if (passage.getVerses().isEmpty()) {
+            builder.append(passage.getText() == null ? "" : passage.getText().trim());
+        } else {
+            for (BibleVerse verse : passage.getVerses()) {
+                builder.append(verse.getVerse())
+                       .append(" ")
+                       .append(verse.getText() == null ? "" : verse.getText().trim())
+                       .append("\n");
+            }
+            // Trim the trailing newline so the text area does not end with extra blank line.
+            if (builder.length() > 0 && builder.charAt(builder.length() - 1) == '\n') {
+                builder.setLength(builder.length() - 1);
+            }
+        }
         return builder.toString();
     }
 
