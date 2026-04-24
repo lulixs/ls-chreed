@@ -4,34 +4,26 @@ import com.bibleapp.data.DataStore;
 import com.bibleapp.data.MemorizedVerse;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
 import java.util.List;
 
-/**
- * Verse memorization page with a list of verses and practice mode.
- * Verse data (reference, text, difficulty) is loaded from and saved to
- * DataStore so it persists between sessions.
- */
 public class MemorizationPage extends VBox {
 
-    /** Labels matching MemorizedVerse difficulty constants 1–4. */
     private static final String[] DIFFICULTY_LABELS = {
-        "Copy-down",       // index 0 → difficulty 1
-        "Every-other A",   // index 1 → difficulty 2
-        "Every-other B",   // index 2 → difficulty 3
-        "Full-memory"      // index 3 → difficulty 4
+        "Copy-down",
+        "Every-other A",
+        "Every-other B",
+        "Full-memory"
     };
 
     private final VBox leftScrollContent;
-    private StackPane popupOverlay;
-    private VBox popupContainer;
-    private VBox popupContentArea;
+    private final StackPane appRoot;
     private Runnable currentClosePopupHandler;
 
-    public MemorizationPage() {
+    public MemorizationPage(StackPane appRoot) {
+        this.appRoot = appRoot;
         getStyleClass().add("page");
         setSpacing(20);
 
@@ -43,7 +35,6 @@ public class MemorizationPage extends VBox {
         HBox.setHgrow(columnsContainer, Priority.ALWAYS);
         VBox.setVgrow(columnsContainer, Priority.ALWAYS);
 
-        // ── Left column – My Verses ───────────────────────────────────────────
         VBox leftColumn = new VBox(10);
         leftColumn.getStyleClass().add("memorize-left-column");
         leftColumn.setPrefWidth(200);
@@ -72,7 +63,6 @@ public class MemorizationPage extends VBox {
         buttonContainer.setAlignment(Pos.CENTER);
         leftColumn.getChildren().add(buttonContainer);
 
-        // ── Right column – Practice area ──────────────────────────────────────
         VBox rightColumn = new VBox(10);
         rightColumn.getStyleClass().add("memorize-right-column");
         HBox.setHgrow(rightColumn, Priority.ALWAYS);
@@ -82,13 +72,8 @@ public class MemorizationPage extends VBox {
         VBox.setVgrow(columnsContainer, Priority.ALWAYS);
 
         getChildren().addAll(title, columnsContainer);
-
         loadVerseList();
     }
-
-    // =========================================================================
-    // Data helpers
-    // =========================================================================
 
     private void loadVerseList() {
         leftScrollContent.getChildren().clear();
@@ -142,39 +127,12 @@ public class MemorizationPage extends VBox {
         return card;
     }
 
-    // =========================================================================
-    // Find root StackPane (App)
-    // =========================================================================
-
-    /**
-     * Walks all the way up the scene graph to find the top-level StackPane
-     * which is App. The hierarchy is:
-     * MemorizationPage → BorderPane → HBox → App (StackPane, no parent)
-     */
-    private StackPane findRootStackPane() {
-        Parent p = this.getParent();
-        while (p != null) {
-            if (p instanceof StackPane sp && p.getParent() == null) {
-                return sp;
-            }
-            p = p.getParent();
-        }
-        if (getScene() != null && getScene().getRoot() instanceof StackPane sp) {
-            return sp;
-        }
-        return null;
-    }
-
-    // =========================================================================
-    // Add-Verse popup
-    // =========================================================================
-
     private void showAddVersePopup() {
-        popupOverlay = new StackPane();
+        StackPane popupOverlay = new StackPane();
         popupOverlay.getStyleClass().add("popup-overlay");
         popupOverlay.setOnMouseClicked(e -> closePopup());
 
-        popupContainer = new VBox(10);
+        VBox popupContainer = new VBox(10);
         popupContainer.getStyleClass().add("memorize-popup");
         popupContainer.setPadding(new Insets(16));
         popupContainer.setMaxWidth(500);
@@ -248,15 +206,13 @@ public class MemorizationPage extends VBox {
             }
 
             int difficulty = diffBox.getSelectionModel().getSelectedIndex() + 1;
-
             MemorizedVerse newVerse = new MemorizedVerse(book, chapter, verseNum, text, difficulty);
             DataStore.addVerse(newVerse);
-
             loadVerseList();
             closePopup();
         });
 
-        popupContentArea = new VBox(10);
+        VBox popupContentArea = new VBox(10);
         popupContentArea.getChildren().addAll(
             new Label("Location:"), locationRow,
             new Label("Verse text:"), textArea,
@@ -271,16 +227,13 @@ public class MemorizationPage extends VBox {
         popupWrapper.setAlignment(Pos.CENTER);
         popupContainer.setOnMouseClicked(e -> e.consume());
 
-        StackPane root = findRootStackPane();
-        if (root != null) {
-            root.getChildren().addAll(popupOverlay, popupWrapper);
-            currentClosePopupHandler = () ->
-                root.getChildren().removeAll(popupOverlay, popupWrapper);
-            root.setOnKeyPressed(e -> {
-                if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) closePopup();
-            });
-            root.requestFocus();
-        }
+        appRoot.getChildren().addAll(popupOverlay, popupWrapper);
+        currentClosePopupHandler = () ->
+            appRoot.getChildren().removeAll(popupOverlay, popupWrapper);
+        appRoot.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) closePopup();
+        });
+        appRoot.requestFocus();
     }
 
     private void closePopup() {
