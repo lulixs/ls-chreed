@@ -4,6 +4,7 @@ import com.bibleapp.data.DataStore;
 import com.bibleapp.data.MemorizedVerse;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
@@ -24,7 +25,7 @@ public class MemorizationPage extends VBox {
         "Full-memory"      // index 3 → difficulty 4
     };
 
-    private final VBox leftScrollContent;   // holds the verse cards
+    private final VBox leftScrollContent;
     private StackPane popupOverlay;
     private VBox popupContainer;
     private VBox popupContentArea;
@@ -82,7 +83,6 @@ public class MemorizationPage extends VBox {
 
         getChildren().addAll(title, columnsContainer);
 
-        // Load saved verses from disk
         loadVerseList();
     }
 
@@ -90,7 +90,6 @@ public class MemorizationPage extends VBox {
     // Data helpers
     // =========================================================================
 
-    /** Reads all verses from DataStore and rebuilds the card list. */
     private void loadVerseList() {
         leftScrollContent.getChildren().clear();
         List<MemorizedVerse> verses = DataStore.getMemorizationList();
@@ -105,25 +104,15 @@ public class MemorizationPage extends VBox {
         }
     }
 
-    /**
-     * Builds a small card for one verse with:
-     *  - Reference label (e.g. "John 3:16")
-     *  - Verse text preview (first 60 chars, ellipsised)
-     *  - Difficulty ComboBox pre-populated from the stored value; changes
-     *    are persisted immediately via DataStore.updateVerseDifficulty()
-     *  - A Remove button
-     */
     private VBox buildVerseCard(MemorizedVerse verse) {
         VBox card = new VBox(4);
         card.getStyleClass().add("verse-card");
         card.setPadding(new Insets(8));
 
-        // Reference  (e.g. "John 3:16")
         Label refLabel = new Label(verse.getReference());
         refLabel.getStyleClass().add("verse-card-reference");
         refLabel.setWrapText(true);
 
-        // Short text preview
         String preview = verse.getText();
         if (preview != null && preview.length() > 60) {
             preview = preview.substring(0, 60).stripTrailing() + "…";
@@ -132,29 +121,48 @@ public class MemorizationPage extends VBox {
         previewLabel.getStyleClass().add("verse-card-preview");
         previewLabel.setWrapText(true);
 
-        // Difficulty selector — pre-populated from stored value, auto-saved on change
         ComboBox<String> diffBox = new ComboBox<>();
         diffBox.getItems().addAll(DIFFICULTY_LABELS);
         diffBox.setMaxWidth(Double.MAX_VALUE);
-        // Difficulty is 1-based; convert to 0-based ComboBox index
         int diffIndex = Math.max(0, Math.min(verse.getDifficulty() - 1, DIFFICULTY_LABELS.length - 1));
         diffBox.getSelectionModel().select(diffIndex);
         diffBox.setOnAction(e -> {
             int selectedIndex = diffBox.getSelectionModel().getSelectedIndex();
-            // Convert 0-based index back to 1-based difficulty constant
             DataStore.updateVerseDifficulty(verse.getId(), selectedIndex + 1);
         });
 
-        // Remove button
         Button removeBtn = new Button("Remove");
         removeBtn.getStyleClass().add("remove-verse-btn");
         removeBtn.setOnAction(e -> {
             DataStore.removeVerse(verse.getId());
-            loadVerseList();   // refresh UI
+            loadVerseList();
         });
 
         card.getChildren().addAll(refLabel, previewLabel, diffBox, removeBtn);
         return card;
+    }
+
+    // =========================================================================
+    // Find root StackPane (App)
+    // =========================================================================
+
+    /**
+     * Walks all the way up the scene graph to find the top-level StackPane
+     * which is App. The hierarchy is:
+     * MemorizationPage → BorderPane → HBox → App (StackPane, no parent)
+     */
+    private StackPane findRootStackPane() {
+        Parent p = this.getParent();
+        while (p != null) {
+            if (p instanceof StackPane sp && p.getParent() == null) {
+                return sp;
+            }
+            p = p.getParent();
+        }
+        if (getScene() != null && getScene().getRoot() instanceof StackPane sp) {
+            return sp;
+        }
+        return null;
     }
 
     // =========================================================================
@@ -184,7 +192,6 @@ public class MemorizationPage extends VBox {
         HBox.setHgrow(popupTitle, Priority.ALWAYS);
         header.getChildren().addAll(popupTitle, closeBtn);
 
-        // ── Book / Chapter / Verse fields ─────────────────────────────────────
         TextField bookField = new TextField();
         bookField.setPromptText("Book (e.g. John)");
 
@@ -198,34 +205,29 @@ public class MemorizationPage extends VBox {
         HBox.setHgrow(bookField, Priority.ALWAYS);
         locationRow.setAlignment(Pos.CENTER_LEFT);
 
-        // ── Verse text ────────────────────────────────────────────────────────
         TextArea textArea = new TextArea();
         textArea.setPromptText("Verse text…");
         textArea.setWrapText(true);
         textArea.setPrefRowCount(4);
 
-        // ── Difficulty selector ───────────────────────────────────────────────
         ComboBox<String> diffBox = new ComboBox<>();
         diffBox.getItems().addAll(DIFFICULTY_LABELS);
-        diffBox.getSelectionModel().selectFirst();   // default: Copy-down
+        diffBox.getSelectionModel().selectFirst();
         diffBox.setMaxWidth(Double.MAX_VALUE);
 
-        // ── Error / feedback label ────────────────────────────────────────────
         Label errorLabel = new Label();
         errorLabel.setStyle("-fx-text-fill: red;");
 
-        // ── Save button — fully wired ─────────────────────────────────────────
         Button saveBtn = new Button("Save Verse");
         saveBtn.getStyleClass().add("add-verse-btn");
         saveBtn.setOnAction(e -> {
             errorLabel.setText("");
 
-            String book    = bookField.getText().trim();
-            String chapStr = chapterField.getText().trim();
+            String book     = bookField.getText().trim();
+            String chapStr  = chapterField.getText().trim();
             String verseStr = verseNumField.getText().trim();
-            String text    = textArea.getText().trim();
+            String text     = textArea.getText().trim();
 
-            // Basic validation
             if (book.isEmpty() || chapStr.isEmpty() || verseStr.isEmpty() || text.isEmpty()) {
                 errorLabel.setText("Please fill in all fields.");
                 return;
@@ -245,13 +247,11 @@ public class MemorizationPage extends VBox {
                 return;
             }
 
-            // Convert 0-based ComboBox selection to 1-based difficulty constant
             int difficulty = diffBox.getSelectionModel().getSelectedIndex() + 1;
 
             MemorizedVerse newVerse = new MemorizedVerse(book, chapter, verseNum, text, difficulty);
             DataStore.addVerse(newVerse);
 
-            // Refresh the "My Verses" list and dismiss the popup
             loadVerseList();
             closePopup();
         });
@@ -271,16 +271,8 @@ public class MemorizationPage extends VBox {
         popupWrapper.setAlignment(Pos.CENTER);
         popupContainer.setOnMouseClicked(e -> e.consume());
 
-        // Walk up the scene graph to find the nearest StackPane to host the popup
-        javafx.scene.Parent p = this.getParent();
-        while (p != null && !(p instanceof StackPane)) {
-            p = p.getParent();
-        }
-        if (p == null && getScene() != null && getScene().getRoot() instanceof StackPane sp) {
-            p = sp;
-        }
-
-        if (p instanceof StackPane root) {
+        StackPane root = findRootStackPane();
+        if (root != null) {
             root.getChildren().addAll(popupOverlay, popupWrapper);
             currentClosePopupHandler = () ->
                 root.getChildren().removeAll(popupOverlay, popupWrapper);
