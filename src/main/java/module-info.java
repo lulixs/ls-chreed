@@ -9,5 +9,4 @@ module com.bibleapp {
     exports com.bibleapp.pages;
     exports com.bibleapp.data;
     exports com.bibleapp.services;
-    exports com.bibleapp.memorization;
 }

@@ -5,14 +5,13 @@ import java.util.List;
 
 import com.bibleapp.data.DataStore;
 import com.bibleapp.data.MemorizedVerse;
+import com.bibleapp.difficulty.*;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextFlow;
-
-import java.util.List;
 
 /**
  * Verse memorization page with a list of verses and practice mode.
@@ -102,6 +101,14 @@ public class MemorizationPage extends VBox {
         loadVerseList();
     }
 
+
+    //  TODO: Wire to left column verse selection
+    private MemorizedVerse getSelectedVerse() {
+        // Debug code. Replace with actual code to get the current verse selected
+        MemorizedVerse verse = new MemorizedVerse("John", 3, 16, "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.", 0);
+        return verse;
+    }
+
     private HBox buildDifficultySelector() {
         // --- Pip column ---
         VBox pipColumn = new VBox(6);
@@ -130,48 +137,57 @@ public class MemorizationPage extends VBox {
             pipColumn.getChildren().add(pipWrapper);
         }
 
-      // --- Selector bar ---
-      prevBtn = new Button("\u2190");
-      prevBtn.getStyleClass().add("diff-arrow-btn");
-      prevBtn.setOnAction(e -> cycleLeft());
+        // --- Selector bar ---
+        prevBtn = new Button("\u2190");
+        prevBtn.getStyleClass().add("diff-arrow-btn");
+        prevBtn.setOnAction(e -> cycleLeft());
 
-      nextBtn = new Button("\u2192");
-      nextBtn.getStyleClass().add("diff-arrow-btn");
-      nextBtn.setOnAction(e -> cycleRight());
+        nextBtn = new Button("\u2192");
+        nextBtn.getStyleClass().add("diff-arrow-btn");
+        nextBtn.setOnAction(e -> cycleRight());
 
-      diffNameLabel = new Label();
-      diffNameLabel.getStyleClass().add("diff-name-label");
+        diffNameLabel = new Label();
+        diffNameLabel.getStyleClass().add("diff-name-label");
 
-      diffLockedLabel = new Label();
-      diffLockedLabel.getStyleClass().add("diff-locked-label");
+        diffLockedLabel = new Label();
+        diffLockedLabel.getStyleClass().add("diff-locked-label");
 
-      VBox textStack = new VBox(2, diffNameLabel, diffLockedLabel);
-      textStack.setAlignment(Pos.CENTER);
-      HBox.setHgrow(textStack, Priority.ALWAYS);
+        VBox textStack = new VBox(2, diffNameLabel, diffLockedLabel);
+        textStack.setAlignment(Pos.CENTER);
+        HBox.setHgrow(textStack, Priority.ALWAYS);
 
-      HBox selectorBar = new HBox(10, prevBtn, textStack, nextBtn);
-      selectorBar.setAlignment(Pos.CENTER);
-      selectorBar.getStyleClass().add("diff-selector-bar");
-      HBox.setHgrow(selectorBar, Priority.ALWAYS);
+        HBox selectorBar = new HBox(10, prevBtn, textStack, nextBtn);
+        selectorBar.setAlignment(Pos.CENTER);
+        selectorBar.getStyleClass().add("diff-selector-bar");
+        HBox.setHgrow(selectorBar, Priority.ALWAYS);
 
-      Button startBtn = new Button("Start");
-      startBtn.getStyleClass().add("diff-start-btn");
-      startBtn.setOnAction(e -> startTask("For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life."));
+        String verse = getSelectedVerse().getText();
 
-      // --- Outer row ---
-      Label sectionLabel = new Label("Difficulty");
-      sectionLabel.getStyleClass().add("diff-section-label");
+        Difficulty diff = switch(currentDifficulty) {
+            case 0 -> new CopyDown(verse);
+            case 1 -> new EveryOtherA(verse);
+            case 2 -> new EveryOtherB(verse);
+            case 3 -> new FullMemory(verse);
+            default -> null;
+        };
+        Button startBtn = new Button("Start");
+        startBtn.getStyleClass().add("add-verse-btn");
+        startBtn.setOnAction(e -> startTask(diff));
 
-      VBox selectorColumn = new VBox(8, sectionLabel, selectorBar, startBtn);
-      selectorColumn.setAlignment(Pos.CENTER);
-      HBox.setHgrow(selectorColumn, Priority.ALWAYS);
+        // --- Outer row ---
+        Label sectionLabel = new Label("Difficulty");
+        sectionLabel.getStyleClass().add("diff-section-label");
 
-      HBox row = new HBox(16, selectorColumn, pipColumn);
-      row.setAlignment(Pos.BOTTOM_LEFT);
-      row.getStyleClass().add("diff-selector-row");
+        VBox selectorColumn = new VBox(8, sectionLabel, selectorBar, startBtn);
+        selectorColumn.setAlignment(Pos.CENTER);
+        HBox.setHgrow(selectorColumn, Priority.ALWAYS);
 
-      refreshDifficultyUI();
-      return row;
+        HBox row = new HBox(16, selectorColumn, pipColumn);
+        row.setAlignment(Pos.BOTTOM_LEFT);
+        row.getStyleClass().add("diff-selector-row");
+
+        refreshDifficultyUI();
+        return row;
     }
 
     private void refreshDifficultyUI() {
@@ -196,7 +212,7 @@ public class MemorizationPage extends VBox {
     private int currentWordIndex = 0;
     private boolean[] wordCorrect;
 
-    private void startTask(String verse) {
+    private void startTask(Difficulty diff) {
         rightColumn.getChildren().clear();
 
         Button backBtn = new Button("\u2190 Back");
@@ -214,7 +230,7 @@ public class MemorizationPage extends VBox {
         verseFlow.setLineSpacing(6);
         verseFlow.getStyleClass().add("verse-text-flow");
 
-        String[] words = verse.split("\\s+");
+        String[] words = diff.getDisplayVerse();
         for (int i = 0; i < words.length; i++) {
             Label wordLabel = new Label(words[i]);
             wordLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #333333;");
@@ -235,9 +251,13 @@ public class MemorizationPage extends VBox {
         inputField.getStyleClass().add("verse-input");
         inputField.setPromptText("Type the first letter of each word...");
 
+        String[] key = diff.getAnswerKey();
+
         inputField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (!newVal.isEmpty()) {
-                advanceWord(inputField, words);
+                if(!advanceWord(inputField, key)) {
+                    onVerseComplete(diff);
+                }
             }
         });
 
@@ -265,23 +285,26 @@ public class MemorizationPage extends VBox {
         }
     }
 
-    private void advanceWord(TextField inputField, String[] words) {
+    private boolean advanceWord(TextField inputField, String[] key) {
         String typed = inputField.getText();
         if (!typed.isEmpty()) {
-            wordCorrect[currentWordIndex] = Character.toLowerCase(typed.charAt(0)) == Character.toLowerCase(words[currentWordIndex].charAt(0));
+            wordCorrect[currentWordIndex] = Character.toLowerCase(typed.charAt(0)) == Character.toLowerCase(key[currentWordIndex].charAt(0));
         }
         inputField.clear();
         currentWordIndex++;
 
         if (currentWordIndex < wordLabels.size()) {
             highlightWord(currentWordIndex);
+            return true;
         } else {
-            onVerseComplete(words);
+            return false;
         }
     }
 
-    private void onVerseComplete(String[] words) {
+    private void onVerseComplete(Difficulty diff) {
         rightColumn.getChildren().clear();
+
+        String[] key = diff.getAnswerKey();
 
         Button backBtn = new Button("\u2190 Back");
         backBtn.getStyleClass().add("back-btn");
@@ -300,10 +323,10 @@ public class MemorizationPage extends VBox {
 
         int numCorrect = countCorrect(wordCorrect);
 
-        Label scoreLabel = new Label(numCorrect + "/" + words.length);
-        scoreLabel.setStyle("-fx-font-size: 48px; -fx-font-weight: bold; -fx-text-fill: " + getScoreColor(numCorrect, words.length) + ";");
+        Label scoreLabel = new Label(numCorrect + "/" + key.length);
+        scoreLabel.setStyle("-fx-font-size: 48px; -fx-font-weight: bold; -fx-text-fill: " + getScoreColor(numCorrect, key.length) + ";");
 
-        Label scoreSubtitle = new Label(getScoreMessage(numCorrect, words.length));
+        Label scoreSubtitle = new Label(getScoreMessage(numCorrect, key.length));
         scoreSubtitle.setStyle("-fx-font-size: 14px; -fx-text-fill: #888888;");
 
         VBox scoreBox = new VBox(8, scoreTitle, scoreLabel, scoreSubtitle);
@@ -311,12 +334,12 @@ public class MemorizationPage extends VBox {
 
         TextFlow verseReview = new TextFlow();
         verseReview.setLineSpacing(6);
-        for (int i = 0; i < words.length; i++) {
-            Label wordLabel = new Label(words[i]);
+        for (int i = 0; i < key.length; i++) {
+            Label wordLabel = new Label(key[i]);
             String color = wordCorrect[i] ? "#1D9E75" : "#D85A30";
             wordLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
             verseReview.getChildren().add(wordLabel);
-            if (i < words.length - 1) {
+            if (i < key.length - 1) {
                 Label space = new Label(" ");
                 space.setStyle("-fx-font-size: 16px;");
                 verseReview.getChildren().add(space);
@@ -324,17 +347,20 @@ public class MemorizationPage extends VBox {
         }
 
         Button actionBtn;
-        if (numCorrect == words.length) {
+        if (numCorrect == key.length) {
             actionBtn = new Button("Continue");
             actionBtn.setOnAction(e -> showDifficultySelector());
             if(currentDifficulty == nextDifficulty) {
                 unlockNextDifficulty();
-                currentDifficulty++;
+                if(currentDifficulty < 3)
+                    currentDifficulty++;
             }
         } else {
             actionBtn = new Button("Retry");
-            actionBtn.setOnAction(e -> startTask(String.join(" ", words)));
+            actionBtn.setOnAction(e -> startTask(diff));
         }
+
+        actionBtn.getStyleClass().add("add-verse-btn");
 
         HBox actionBar = new HBox(actionBtn);
         actionBar.setAlignment(Pos.CENTER);
