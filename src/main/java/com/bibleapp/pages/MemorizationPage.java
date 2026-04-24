@@ -9,20 +9,21 @@ import javafx.scene.layout.*;
 
 import java.util.List;
 
-/**
- * Verse memorization page with a list of verses and practice mode.
- * Verse data (reference, text, difficulty) is loaded from and saved to
- * DataStore so it persists between sessions.
- */
 public class MemorizationPage extends VBox {
 
-    private final VBox leftScrollContent;   // holds the verse cards
-    private StackPane popupOverlay;
-    private VBox popupContainer;
-    private VBox popupContentArea;
+    private static final String[] DIFFICULTY_LABELS = {
+        "Copy-down",
+        "Every-other A",
+        "Every-other B",
+        "Full-memory"
+    };
+
+    private final VBox leftScrollContent;
+    private final StackPane appRoot;
     private Runnable currentClosePopupHandler;
 
-    public MemorizationPage() {
+    public MemorizationPage(StackPane appRoot) {
+        this.appRoot = appRoot;
         getStyleClass().add("page");
         setSpacing(20);
 
@@ -34,7 +35,6 @@ public class MemorizationPage extends VBox {
         HBox.setHgrow(columnsContainer, Priority.ALWAYS);
         VBox.setVgrow(columnsContainer, Priority.ALWAYS);
 
-        // ── Left column – My Verses ───────────────────────────────────────────
         VBox leftColumn = new VBox(10);
         leftColumn.getStyleClass().add("memorize-left-column");
         leftColumn.setPrefWidth(200);
@@ -63,7 +63,6 @@ public class MemorizationPage extends VBox {
         buttonContainer.setAlignment(Pos.CENTER);
         leftColumn.getChildren().add(buttonContainer);
 
-        // ── Right column – Practice area ──────────────────────────────────────
         VBox rightColumn = new VBox(10);
         rightColumn.getStyleClass().add("memorize-right-column");
         HBox.setHgrow(rightColumn, Priority.ALWAYS);
@@ -73,16 +72,9 @@ public class MemorizationPage extends VBox {
         VBox.setVgrow(columnsContainer, Priority.ALWAYS);
 
         getChildren().addAll(title, columnsContainer);
-
-        // Load saved verses from disk
         loadVerseList();
     }
 
-    // =========================================================================
-    // Data helpers
-    // =========================================================================
-
-    /** Reads all verses from DataStore and rebuilds the card list. */
     private void loadVerseList() {
         leftScrollContent.getChildren().clear();
         List<MemorizedVerse> verses = DataStore.getMemorizationList();
@@ -97,13 +89,6 @@ public class MemorizationPage extends VBox {
         }
     }
 
-    /**
-     * Builds a small card for one verse with:
-     *  - Reference label
-     *  - Difficulty level label
-     *  - A ComboBox to change difficulty (auto-saved)
-     *  - A Remove button
-     */
     private VBox buildVerseCard(MemorizedVerse verse) {
         VBox card = new VBox(4);
         card.getStyleClass().add("verse-card");
@@ -113,37 +98,41 @@ public class MemorizationPage extends VBox {
         refLabel.getStyleClass().add("verse-card-reference");
         refLabel.setWrapText(true);
 
-        // Difficulty selector.
-        // TODO(ui): wire this ComboBox to the new 4-level difficulty scheme
-        // on MemorizedVerse (Copy-down / Every-other A / Every-other B /
-        // Full-memory). Pre-populate from verse.getDifficulty() and persist
-        // via DataStore.updateVerseDifficulty(verse.getId(), ...). Labels
-        // and mapping left for the UI redesign.
-        ComboBox<String> diffBox = new ComboBox<>();
-        diffBox.setMaxWidth(Double.MAX_VALUE);
+        String preview = verse.getText();
+        if (preview != null && preview.length() > 60) {
+            preview = preview.substring(0, 60).stripTrailing() + "…";
+        }
+        Label previewLabel = new Label(preview);
+        previewLabel.getStyleClass().add("verse-card-preview");
+        previewLabel.setWrapText(true);
 
-        // Remove button
+        ComboBox<String> diffBox = new ComboBox<>();
+        diffBox.getItems().addAll(DIFFICULTY_LABELS);
+        diffBox.setMaxWidth(Double.MAX_VALUE);
+        int diffIndex = Math.max(0, Math.min(verse.getDifficulty() - 1, DIFFICULTY_LABELS.length - 1));
+        diffBox.getSelectionModel().select(diffIndex);
+        diffBox.setOnAction(e -> {
+            int selectedIndex = diffBox.getSelectionModel().getSelectedIndex();
+            DataStore.updateVerseDifficulty(verse.getId(), selectedIndex + 1);
+        });
+
         Button removeBtn = new Button("Remove");
         removeBtn.getStyleClass().add("remove-verse-btn");
         removeBtn.setOnAction(e -> {
             DataStore.removeVerse(verse.getId());
-            loadVerseList();   // refresh UI
+            loadVerseList();
         });
 
-        card.getChildren().addAll(refLabel, diffBox, removeBtn);
+        card.getChildren().addAll(refLabel, previewLabel, diffBox, removeBtn);
         return card;
     }
 
-    // =========================================================================
-    // Add-Verse popup
-    // =========================================================================
-
     private void showAddVersePopup() {
-        popupOverlay = new StackPane();
+        StackPane popupOverlay = new StackPane();
         popupOverlay.getStyleClass().add("popup-overlay");
         popupOverlay.setOnMouseClicked(e -> closePopup());
 
-        popupContainer = new VBox(10);
+        VBox popupContainer = new VBox(10);
         popupContainer.getStyleClass().add("memorize-popup");
         popupContainer.setPadding(new Insets(16));
         popupContainer.setMaxWidth(500);
@@ -161,9 +150,18 @@ public class MemorizationPage extends VBox {
         HBox.setHgrow(popupTitle, Priority.ALWAYS);
         header.getChildren().addAll(popupTitle, closeBtn);
 
-        // Input fields
-        TextField refField = new TextField();
-        refField.setPromptText("Reference (e.g. John 3:16)");
+        TextField bookField = new TextField();
+        bookField.setPromptText("Book (e.g. John)");
+
+        TextField chapterField = new TextField();
+        chapterField.setPromptText("Chapter (e.g. 3)");
+
+        TextField verseNumField = new TextField();
+        verseNumField.setPromptText("Verse (e.g. 16)");
+
+        HBox locationRow = new HBox(8, bookField, chapterField, verseNumField);
+        HBox.setHgrow(bookField, Priority.ALWAYS);
+        locationRow.setAlignment(Pos.CENTER_LEFT);
 
         TextArea textArea = new TextArea();
         textArea.setPromptText("Verse text…");
@@ -171,6 +169,8 @@ public class MemorizationPage extends VBox {
         textArea.setPrefRowCount(4);
 
         ComboBox<String> diffBox = new ComboBox<>();
+        diffBox.getItems().addAll(DIFFICULTY_LABELS);
+        diffBox.getSelectionModel().selectFirst();
         diffBox.setMaxWidth(Double.MAX_VALUE);
 
         Label errorLabel = new Label();
@@ -178,17 +178,43 @@ public class MemorizationPage extends VBox {
 
         Button saveBtn = new Button("Save Verse");
         saveBtn.getStyleClass().add("add-verse-btn");
-        // TODO(ui): collect book, chapter, verse, text, and difficulty from
-        // the form, construct a MemorizedVerse, and persist via
-        // DataStore.addVerse(...). The new entry shape requires separate
-        // book / chapter / verse fields rather than a single reference
-        // string, so the input widgets above will need to be redesigned.
-        saveBtn.setOnAction(e ->
-            errorLabel.setText("Add-verse flow is being redesigned and is not yet wired."));
+        saveBtn.setOnAction(e -> {
+            errorLabel.setText("");
 
-        popupContentArea = new VBox(10);
+            String book     = bookField.getText().trim();
+            String chapStr  = chapterField.getText().trim();
+            String verseStr = verseNumField.getText().trim();
+            String text     = textArea.getText().trim();
+
+            if (book.isEmpty() || chapStr.isEmpty() || verseStr.isEmpty() || text.isEmpty()) {
+                errorLabel.setText("Please fill in all fields.");
+                return;
+            }
+
+            int chapter, verseNum;
+            try {
+                chapter  = Integer.parseInt(chapStr);
+                verseNum = Integer.parseInt(verseStr);
+            } catch (NumberFormatException ex) {
+                errorLabel.setText("Chapter and verse must be numbers.");
+                return;
+            }
+
+            if (chapter <= 0 || verseNum <= 0) {
+                errorLabel.setText("Chapter and verse must be greater than 0.");
+                return;
+            }
+
+            int difficulty = diffBox.getSelectionModel().getSelectedIndex() + 1;
+            MemorizedVerse newVerse = new MemorizedVerse(book, chapter, verseNum, text, difficulty);
+            DataStore.addVerse(newVerse);
+            loadVerseList();
+            closePopup();
+        });
+
+        VBox popupContentArea = new VBox(10);
         popupContentArea.getChildren().addAll(
-            new Label("Reference:"), refField,
+            new Label("Location:"), locationRow,
             new Label("Verse text:"), textArea,
             new Label("Difficulty:"), diffBox,
             errorLabel, saveBtn
@@ -201,15 +227,13 @@ public class MemorizationPage extends VBox {
         popupWrapper.setAlignment(Pos.CENTER);
         popupContainer.setOnMouseClicked(e -> e.consume());
 
-        if (getScene() != null && getScene().getRoot() instanceof StackPane root) {
-            root.getChildren().addAll(popupOverlay, popupWrapper);
-            currentClosePopupHandler = () ->
-                root.getChildren().removeAll(popupOverlay, popupWrapper);
-            root.setOnKeyPressed(e -> {
-                if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) closePopup();
-            });
-            root.requestFocus();
-        }
+        appRoot.getChildren().addAll(popupOverlay, popupWrapper);
+        currentClosePopupHandler = () ->
+            appRoot.getChildren().removeAll(popupOverlay, popupWrapper);
+        appRoot.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) closePopup();
+        });
+        appRoot.requestFocus();
     }
 
     private void closePopup() {
