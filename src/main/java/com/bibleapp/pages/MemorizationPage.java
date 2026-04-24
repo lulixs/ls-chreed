@@ -3,28 +3,25 @@ package com.bibleapp.pages;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.bibleapp.data.DataStore;
+import com.bibleapp.data.MemorizedVerse;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
-import javafx.scene.control.TextField;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
-import javafx.scene.layout.Region;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.control.*;
+import javafx.scene.layout.*;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextFlow;
 
+import java.util.List;
+
 /**
  * Verse memorization page with a list of verses and practice mode.
- * Contains a scrollable verse list and an add verse popup.
+ * Verse data (reference, text, difficulty) is loaded from and saved to
+ * DataStore so it persists between sessions.
  */
 public class MemorizationPage extends VBox {
 
-    private final VBox leftColumn;
-    private final VBox rightColumn;
+    private final VBox leftScrollContent;   // holds the verse cards
     private StackPane popupOverlay;
     private VBox popupContainer;
     private VBox popupContentArea;
@@ -38,6 +35,7 @@ public class MemorizationPage extends VBox {
     private Button prevBtn, nextBtn;
     private Label diffNameLabel;
     private Label diffLockedLabel;
+    private VBox rightColumn;
     private final Rectangle[] pips = new Rectangle[4];
 
     public MemorizationPage() {
@@ -52,8 +50,8 @@ public class MemorizationPage extends VBox {
         HBox.setHgrow(columnsContainer, Priority.ALWAYS);
         VBox.setVgrow(columnsContainer, Priority.ALWAYS);
 
-        // Left column - My Verses list
-        leftColumn = new VBox(10);
+        // ── Left column – My Verses ───────────────────────────────────────────
+        VBox leftColumn = new VBox(10);
         leftColumn.getStyleClass().add("memorize-left-column");
         leftColumn.setPrefWidth(200);
         leftColumn.setMinWidth(150);
@@ -63,8 +61,7 @@ public class MemorizationPage extends VBox {
         leftLabel.getStyleClass().add("column-header");
         leftColumn.getChildren().add(leftLabel);
 
-        // Scrollable content for verse cards
-        VBox leftScrollContent = new VBox(10);
+        leftScrollContent = new VBox(10);
         leftScrollContent.getStyleClass().add("memorize-scroll-content");
         leftScrollContent.setPadding(new Insets(10));
 
@@ -76,7 +73,6 @@ public class MemorizationPage extends VBox {
         VBox.setVgrow(leftScrollPane, Priority.ALWAYS);
         leftColumn.getChildren().add(leftScrollPane);
 
-        // Add button
         Button addButton = new Button("+ Add Verse");
         addButton.getStyleClass().add("add-verse-btn");
         addButton.setOnAction(e -> showAddVersePopup());
@@ -101,6 +97,9 @@ public class MemorizationPage extends VBox {
         VBox.setVgrow(columnsContainer, Priority.ALWAYS);
 
         getChildren().addAll(title, columnsContainer);
+
+        // Load saved verses from disk
+        loadVerseList();
     }
 
     private HBox buildDifficultySelector() {
@@ -414,18 +413,76 @@ public class MemorizationPage extends VBox {
     }
 
     // --- Popup logic ---
+    // =========================================================================
+    // Data helpers
+    // =========================================================================
+
+    /** Reads all verses from DataStore and rebuilds the card list. */
+    private void loadVerseList() {
+        leftScrollContent.getChildren().clear();
+        List<MemorizedVerse> verses = DataStore.getMemorizationList();
+        if (verses.isEmpty()) {
+            Label empty = new Label("No verses yet. Tap '+ Add Verse'.");
+            empty.getStyleClass().add("popup-placeholder");
+            leftScrollContent.getChildren().add(empty);
+        } else {
+            for (MemorizedVerse verse : verses) {
+                leftScrollContent.getChildren().add(buildVerseCard(verse));
+            }
+        }
+    }
+
+    /**
+     * Builds a small card for one verse with:
+     *  - Reference label
+     *  - Difficulty level label
+     *  - A ComboBox to change difficulty (auto-saved)
+     *  - A Remove button
+     */
+    private VBox buildVerseCard(MemorizedVerse verse) {
+        VBox card = new VBox(4);
+        card.getStyleClass().add("verse-card");
+        card.setPadding(new Insets(8));
+
+        Label refLabel = new Label(verse.getReference());
+        refLabel.getStyleClass().add("verse-card-reference");
+        refLabel.setWrapText(true);
+
+        // Difficulty selector.
+        // TODO(ui): wire this ComboBox to the new 4-level difficulty scheme
+        // on MemorizedVerse (Copy-down / Every-other A / Every-other B /
+        // Full-memory). Pre-populate from verse.getDifficulty() and persist
+        // via DataStore.updateVerseDifficulty(verse.getId(), ...). Labels
+        // and mapping left for the UI redesign.
+        ComboBox<String> diffBox = new ComboBox<>();
+        diffBox.setMaxWidth(Double.MAX_VALUE);
+
+        // Remove button
+        Button removeBtn = new Button("Remove");
+        removeBtn.getStyleClass().add("remove-verse-btn");
+        removeBtn.setOnAction(e -> {
+            DataStore.removeVerse(verse.getId());
+            loadVerseList();   // refresh UI
+        });
+
+        card.getChildren().addAll(refLabel, diffBox, removeBtn);
+        return card;
+    }
+
+    // =========================================================================
+    // Add-Verse popup
+    // =========================================================================
 
     private void showAddVersePopup() {
         popupOverlay = new StackPane();
         popupOverlay.getStyleClass().add("popup-overlay");
         popupOverlay.setOnMouseClicked(e -> closePopup());
 
-        popupContainer = new VBox();
+        popupContainer = new VBox(10);
         popupContainer.getStyleClass().add("memorize-popup");
+        popupContainer.setPadding(new Insets(16));
         popupContainer.setMaxWidth(500);
-        popupContainer.setMaxHeight(600);
-        popupContainer.setMinWidth(400);
-        popupContainer.setMinHeight(400);
+        popupContainer.setMinWidth(350);
 
         Label popupTitle = new Label("Add Verse");
         popupTitle.getStyleClass().add("popup-title");
@@ -439,40 +496,52 @@ public class MemorizationPage extends VBox {
         HBox.setHgrow(popupTitle, Priority.ALWAYS);
         header.getChildren().addAll(popupTitle, closeBtn);
 
+        // Input fields
+        TextField refField = new TextField();
+        refField.setPromptText("Reference (e.g. John 3:16)");
+
+        TextArea textArea = new TextArea();
+        textArea.setPromptText("Verse text…");
+        textArea.setWrapText(true);
+        textArea.setPrefRowCount(4);
+
+        ComboBox<String> diffBox = new ComboBox<>();
+        diffBox.setMaxWidth(Double.MAX_VALUE);
+
+        Label errorLabel = new Label();
+        errorLabel.setStyle("-fx-text-fill: red;");
+
+        Button saveBtn = new Button("Save Verse");
+        saveBtn.getStyleClass().add("add-verse-btn");
+        // TODO(ui): collect book, chapter, verse, text, and difficulty from
+        // the form, construct a MemorizedVerse, and persist via
+        // DataStore.addVerse(...). The new entry shape requires separate
+        // book / chapter / verse fields rather than a single reference
+        // string, so the input widgets above will need to be redesigned.
+        saveBtn.setOnAction(e ->
+            errorLabel.setText("Add-verse flow is being redesigned and is not yet wired."));
+
         popupContentArea = new VBox(10);
-        popupContentArea.getStyleClass().add("popup-scroll-content");
-        popupContentArea.setPadding(new Insets(10));
+        popupContentArea.getChildren().addAll(
+            new Label("Reference:"), refField,
+            new Label("Verse text:"), textArea,
+            new Label("Difficulty:"), diffBox,
+            errorLabel, saveBtn
+        );
 
-        ScrollPane popupScroll = new ScrollPane(popupContentArea);
-        popupScroll.getStyleClass().add("popup-scroll-pane");
-        popupScroll.setFitToWidth(true);
-        popupScroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        popupScroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        VBox.setVgrow(popupScroll, Priority.ALWAYS);
-
-        Label placeholder = new Label("Available verses will appear here");
-        placeholder.getStyleClass().add("popup-placeholder");
-        popupContentArea.getChildren().add(placeholder);
-
-        popupContainer.getChildren().addAll(header, popupScroll);
+        popupContainer.getChildren().addAll(header, popupContentArea);
 
         StackPane popupWrapper = new StackPane(popupContainer);
         popupWrapper.getStyleClass().add("popup-wrapper");
         popupWrapper.setAlignment(Pos.CENTER);
         popupContainer.setOnMouseClicked(e -> e.consume());
 
-        if (getScene() != null && getScene().getRoot() instanceof StackPane) {
-            StackPane root = (StackPane) getScene().getRoot();
+        if (getScene() != null && getScene().getRoot() instanceof StackPane root) {
             root.getChildren().addAll(popupOverlay, popupWrapper);
-
-            currentClosePopupHandler = () -> {
+            currentClosePopupHandler = () ->
                 root.getChildren().removeAll(popupOverlay, popupWrapper);
-            };
-
             root.setOnKeyPressed(e -> {
-                if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
-                    closePopup();
-                }
+                if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) closePopup();
             });
             root.requestFocus();
         }
