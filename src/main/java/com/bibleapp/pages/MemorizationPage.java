@@ -16,6 +16,14 @@ import java.util.List;
  */
 public class MemorizationPage extends VBox {
 
+    /** Labels matching MemorizedVerse difficulty constants 1–4. */
+    private static final String[] DIFFICULTY_LABELS = {
+        "Copy-down",       // index 0 → difficulty 1
+        "Every-other A",   // index 1 → difficulty 2
+        "Every-other B",   // index 2 → difficulty 3
+        "Full-memory"      // index 3 → difficulty 4
+    };
+
     private final VBox leftScrollContent;   // holds the verse cards
     private StackPane popupOverlay;
     private VBox popupContainer;
@@ -99,9 +107,10 @@ public class MemorizationPage extends VBox {
 
     /**
      * Builds a small card for one verse with:
-     *  - Reference label
-     *  - Difficulty level label
-     *  - A ComboBox to change difficulty (auto-saved)
+     *  - Reference label (e.g. "John 3:16")
+     *  - Verse text preview (first 60 chars, ellipsised)
+     *  - Difficulty ComboBox pre-populated from the stored value; changes
+     *    are persisted immediately via DataStore.updateVerseDifficulty()
      *  - A Remove button
      */
     private VBox buildVerseCard(MemorizedVerse verse) {
@@ -109,18 +118,32 @@ public class MemorizationPage extends VBox {
         card.getStyleClass().add("verse-card");
         card.setPadding(new Insets(8));
 
+        // Reference  (e.g. "John 3:16")
         Label refLabel = new Label(verse.getReference());
         refLabel.getStyleClass().add("verse-card-reference");
         refLabel.setWrapText(true);
 
-        // Difficulty selector.
-        // TODO(ui): wire this ComboBox to the new 4-level difficulty scheme
-        // on MemorizedVerse (Copy-down / Every-other A / Every-other B /
-        // Full-memory). Pre-populate from verse.getDifficulty() and persist
-        // via DataStore.updateVerseDifficulty(verse.getId(), ...). Labels
-        // and mapping left for the UI redesign.
+        // Short text preview
+        String preview = verse.getText();
+        if (preview != null && preview.length() > 60) {
+            preview = preview.substring(0, 60).stripTrailing() + "…";
+        }
+        Label previewLabel = new Label(preview);
+        previewLabel.getStyleClass().add("verse-card-preview");
+        previewLabel.setWrapText(true);
+
+        // Difficulty selector — pre-populated from stored value, auto-saved on change
         ComboBox<String> diffBox = new ComboBox<>();
+        diffBox.getItems().addAll(DIFFICULTY_LABELS);
         diffBox.setMaxWidth(Double.MAX_VALUE);
+        // Difficulty is 1-based; convert to 0-based ComboBox index
+        int diffIndex = Math.max(0, Math.min(verse.getDifficulty() - 1, DIFFICULTY_LABELS.length - 1));
+        diffBox.getSelectionModel().select(diffIndex);
+        diffBox.setOnAction(e -> {
+            int selectedIndex = diffBox.getSelectionModel().getSelectedIndex();
+            // Convert 0-based index back to 1-based difficulty constant
+            DataStore.updateVerseDifficulty(verse.getId(), selectedIndex + 1);
+        });
 
         // Remove button
         Button removeBtn = new Button("Remove");
@@ -130,7 +153,7 @@ public class MemorizationPage extends VBox {
             loadVerseList();   // refresh UI
         });
 
-        card.getChildren().addAll(refLabel, diffBox, removeBtn);
+        card.getChildren().addAll(refLabel, previewLabel, diffBox, removeBtn);
         return card;
     }
 
@@ -161,34 +184,81 @@ public class MemorizationPage extends VBox {
         HBox.setHgrow(popupTitle, Priority.ALWAYS);
         header.getChildren().addAll(popupTitle, closeBtn);
 
-        // Input fields
-        TextField refField = new TextField();
-        refField.setPromptText("Reference (e.g. John 3:16)");
+        // ── Book / Chapter / Verse fields ─────────────────────────────────────
+        TextField bookField = new TextField();
+        bookField.setPromptText("Book (e.g. John)");
 
+        TextField chapterField = new TextField();
+        chapterField.setPromptText("Chapter (e.g. 3)");
+
+        TextField verseNumField = new TextField();
+        verseNumField.setPromptText("Verse (e.g. 16)");
+
+        HBox locationRow = new HBox(8, bookField, chapterField, verseNumField);
+        HBox.setHgrow(bookField, Priority.ALWAYS);
+        locationRow.setAlignment(Pos.CENTER_LEFT);
+
+        // ── Verse text ────────────────────────────────────────────────────────
         TextArea textArea = new TextArea();
         textArea.setPromptText("Verse text…");
         textArea.setWrapText(true);
         textArea.setPrefRowCount(4);
 
+        // ── Difficulty selector ───────────────────────────────────────────────
         ComboBox<String> diffBox = new ComboBox<>();
+        diffBox.getItems().addAll(DIFFICULTY_LABELS);
+        diffBox.getSelectionModel().selectFirst();   // default: Copy-down
         diffBox.setMaxWidth(Double.MAX_VALUE);
 
+        // ── Error / feedback label ────────────────────────────────────────────
         Label errorLabel = new Label();
         errorLabel.setStyle("-fx-text-fill: red;");
 
+        // ── Save button — fully wired ─────────────────────────────────────────
         Button saveBtn = new Button("Save Verse");
         saveBtn.getStyleClass().add("add-verse-btn");
-        // TODO(ui): collect book, chapter, verse, text, and difficulty from
-        // the form, construct a MemorizedVerse, and persist via
-        // DataStore.addVerse(...). The new entry shape requires separate
-        // book / chapter / verse fields rather than a single reference
-        // string, so the input widgets above will need to be redesigned.
-        saveBtn.setOnAction(e ->
-            errorLabel.setText("Add-verse flow is being redesigned and is not yet wired."));
+        saveBtn.setOnAction(e -> {
+            errorLabel.setText("");
+
+            String book    = bookField.getText().trim();
+            String chapStr = chapterField.getText().trim();
+            String verseStr = verseNumField.getText().trim();
+            String text    = textArea.getText().trim();
+
+            // Basic validation
+            if (book.isEmpty() || chapStr.isEmpty() || verseStr.isEmpty() || text.isEmpty()) {
+                errorLabel.setText("Please fill in all fields.");
+                return;
+            }
+
+            int chapter, verseNum;
+            try {
+                chapter  = Integer.parseInt(chapStr);
+                verseNum = Integer.parseInt(verseStr);
+            } catch (NumberFormatException ex) {
+                errorLabel.setText("Chapter and verse must be numbers.");
+                return;
+            }
+
+            if (chapter <= 0 || verseNum <= 0) {
+                errorLabel.setText("Chapter and verse must be greater than 0.");
+                return;
+            }
+
+            // Convert 0-based ComboBox selection to 1-based difficulty constant
+            int difficulty = diffBox.getSelectionModel().getSelectedIndex() + 1;
+
+            MemorizedVerse newVerse = new MemorizedVerse(book, chapter, verseNum, text, difficulty);
+            DataStore.addVerse(newVerse);
+
+            // Refresh the "My Verses" list and dismiss the popup
+            loadVerseList();
+            closePopup();
+        });
 
         popupContentArea = new VBox(10);
         popupContentArea.getChildren().addAll(
-            new Label("Reference:"), refField,
+            new Label("Location:"), locationRow,
             new Label("Verse text:"), textArea,
             new Label("Difficulty:"), diffBox,
             errorLabel, saveBtn
