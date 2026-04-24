@@ -4,7 +4,6 @@ public class CopyDownDifficulty implements Difficulty {
     private String verseText;
     private int numberOfBlanks;
 
-    // Constructor
     public CopyDownDifficulty(String verseText, int numberOfBlanks) {
         this.verseText = verseText;
         this.numberOfBlanks = numberOfBlanks;
@@ -12,11 +11,11 @@ public class CopyDownDifficulty implements Difficulty {
 
     @Override
     public String getVerse() {
-        return this.verseText;
+        return verseText;
     }
 
     @Override
     public int getBlanks() {
-        return this.numberOfBlanks;
+        return numberOfBlanks;
     }
 }
