@@ -271,7 +271,16 @@ public class MemorizationPage extends VBox {
         popupWrapper.setAlignment(Pos.CENTER);
         popupContainer.setOnMouseClicked(e -> e.consume());
 
-        if (getScene() != null && getScene().getRoot() instanceof StackPane root) {
+        // Walk up the scene graph to find the nearest StackPane to host the popup
+        javafx.scene.Parent p = this.getParent();
+        while (p != null && !(p instanceof StackPane)) {
+            p = p.getParent();
+        }
+        if (p == null && getScene() != null && getScene().getRoot() instanceof StackPane sp) {
+            p = sp;
+        }
+
+        if (p instanceof StackPane root) {
             root.getChildren().addAll(popupOverlay, popupWrapper);
             currentClosePopupHandler = () ->
                 root.getChildren().removeAll(popupOverlay, popupWrapper);
