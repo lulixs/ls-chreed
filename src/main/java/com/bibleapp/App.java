@@ -166,7 +166,7 @@ public class App extends StackPane {
             case "Read" -> contentArea.setCenter(new ReadingPage());
             case "Plans" -> contentArea.setCenter(new ReadingPlansPage());
             case "Stats" -> contentArea.setCenter(new StatisticsPage());
-            case "Memorize" -> contentArea.setCenter(new MemorizationPage());
+            case "Memorize" -> contentArea.setCenter(new MemorizationPage(new StackPane()));
         }
     }
 

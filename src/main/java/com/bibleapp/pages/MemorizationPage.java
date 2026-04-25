@@ -28,15 +28,14 @@ public class MemorizationPage extends VBox {
     private Runnable currentClosePopupHandler;
     private VerseDifficultyServer difficulty;
 
-    private static final String[] DIFFICULTY_NAMES = { "Copy-Down", "Every-Other A", "Every-Other B", "Full-Memory" };
     private static final String[] DIFFICULTY_COLORS = { "#1D9E75", "#378ADD", "#BA7517", "#D85A30", "#555555" };
-    private int nextDifficulty = 0;
 
     private int currentDifficulty = 0;   // 0-indexed
     private Button prevBtn, nextBtn;
     private Label diffNameLabel;
     private Label diffLockedLabel;
     private VBox rightColumn;
+    private MemorizedVerse currentVerse;
     private final Rectangle[] pips = new Rectangle[4];
 
     public MemorizationPage(StackPane appRoot) {
@@ -108,7 +107,7 @@ public class MemorizationPage extends VBox {
     private MemorizedVerse getSelectedVerse() {
         // Debug code. Replace with actual code to get the current verse selected
         MemorizedVerse verse = new MemorizedVerse("John", 3, 16, "For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.", 0);
-        return verse;
+        return currentVerse == null ? verse : currentVerse;
     }
 
     private HBox buildDifficultySelector() {
@@ -122,15 +121,6 @@ public class MemorizationPage extends VBox {
             pip.setArcWidth(6);
             pip.setArcHeight(6);
 
-            String color;
-            if(i < nextDifficulty)
-                color = DIFFICULTY_COLORS[i];
-            else {
-                color = DIFFICULTY_COLORS[4];
-                if(i != nextDifficulty)
-                    pip = new Rectangle(9, 9);
-            }
-            pip.setFill(javafx.scene.paint.Color.web(color));
             pips[i] = pip;
 
             StackPane pipWrapper = new StackPane(pip);
@@ -163,8 +153,11 @@ public class MemorizationPage extends VBox {
         selectorBar.getStyleClass().add("diff-selector-bar");
         HBox.setHgrow(selectorBar, Priority.ALWAYS);
 
-        difficulty.setDifficulty(getSelectedVerse(), currentDifficulty);
+        // Sets selected verse and difficulty
+        currentVerse = getSelectedVerse();
+        difficulty.setDifficulty(currentVerse, currentDifficulty);
 
+        // Button used to start a memorization task
         Button startBtn = new Button("Start");
         startBtn.getStyleClass().add("add-verse-btn");
         startBtn.setOnAction(e -> startTask());
@@ -182,11 +175,33 @@ public class MemorizationPage extends VBox {
         row.getStyleClass().add("diff-selector-row");
 
         refreshDifficultyUI();
+
         return row;
     }
 
+    // Refreshes Difficulty UI
     private void refreshDifficultyUI() {
         for (int i = 0; i < 4; i++) {
+
+            String color;
+            // If difficulty is completed, color its pip in
+            if(i < currentVerse.getNextDifficulty()) {
+                color = DIFFICULTY_COLORS[i];
+            }
+            else {
+                // If difficulty is yet to be completed, color its pip gray
+                color = DIFFICULTY_COLORS[4];
+
+                // If difficulty is locked, make its pip small
+                if(i != currentVerse.getNextDifficulty()){
+                    pips[i].setWidth(9);
+                    pips[i].setHeight(9);
+                }
+            }
+            
+            pips[i].setFill(javafx.scene.paint.Color.web(color));
+
+            // If difficulty is currently selected, highlight its pip
             if (i == currentDifficulty) {
                 pips[i].setStroke(javafx.scene.paint.Color.web("#000000"));
                 pips[i].setStrokeWidth(2.5);
@@ -196,11 +211,11 @@ public class MemorizationPage extends VBox {
             }
         }
 
-        diffNameLabel.setText(DIFFICULTY_NAMES[currentDifficulty]);
-        diffLockedLabel.setText(nextDifficulty == currentDifficulty ? "Incomplete" : "Completed");
+        diffNameLabel.setText(MemorizedVerse.getDifficultyLabel(currentDifficulty));
+        diffLockedLabel.setText(currentVerse.getNextDifficulty() == currentDifficulty ? "Incomplete" : "Completed");
 
         prevBtn.setDisable(currentDifficulty == 0);
-        nextBtn.setDisable(currentDifficulty == Math.min(nextDifficulty, 3));
+        nextBtn.setDisable(currentDifficulty == Math.min(currentVerse.getNextDifficulty(), 3));
     }
 
     private List<Label> wordLabels = new ArrayList<>();
@@ -208,8 +223,14 @@ public class MemorizationPage extends VBox {
     private boolean[] wordCorrect;
 
     private void startTask() {
+        // Resets right column
         rightColumn.getChildren().clear();
 
+        // Sets selected verse and difficulty
+        currentVerse = getSelectedVerse();
+        difficulty.setDifficulty(currentVerse, currentDifficulty);
+        
+        // Adds a back button to return to difficulty selector
         Button backBtn = new Button("\u2190 Back");
         backBtn.getStyleClass().add("back-btn");
         backBtn.setOnAction(e -> showDifficultySelector());
@@ -221,17 +242,21 @@ public class MemorizationPage extends VBox {
         wordLabels.clear();
         currentWordIndex = 0;
 
+        // TextFlow displays verse
         TextFlow verseFlow = new TextFlow();
         verseFlow.setLineSpacing(6);
         verseFlow.getStyleClass().add("verse-text-flow");
 
         String[] words = difficulty.getDisplayVerse();
         for (int i = 0; i < words.length; i++) {
+
+            // Adds word to verse display
             Label wordLabel = new Label(words[i]);
             wordLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #333333;");
             wordLabels.add(wordLabel);
             verseFlow.getChildren().add(wordLabel);
 
+            // Add a space between words
             if (i < words.length - 1) {
                 Label space = new Label(" ");
                 space.setStyle("-fx-font-size: 16px;");
@@ -241,13 +266,14 @@ public class MemorizationPage extends VBox {
 
         wordCorrect = new boolean[words.length];
 
-        // Input field
+        // Input field (Purely to listen for input, nothing will be dispalyed)
         TextField inputField = new TextField();
         inputField.getStyleClass().add("verse-input");
         inputField.setPromptText("Type the first letter of each word...");
 
         inputField.textProperty().addListener((obs, oldVal, newVal) -> {
             if (!newVal.isEmpty()) {
+                // If advanceWord fails, then verse must be complete
                 if(!advanceWord(inputField)) {
                     onVerseComplete();
                 }
@@ -259,6 +285,7 @@ public class MemorizationPage extends VBox {
 
         rightColumn.getChildren().addAll(topBar, verseFlow, spacer, inputField);
 
+        // Highlights first word
         highlightWord(0);
 
         // Focus the input after the scene has laid out
@@ -282,6 +309,7 @@ public class MemorizationPage extends VBox {
 
         String[] key = difficulty.getAnswerKey();
 
+        // If first typed letter matches first letter of key word (case-insensitive), then mark it correct
         String typed = inputField.getText();
         if (!typed.isEmpty()) {
             wordCorrect[currentWordIndex] = Character.toLowerCase(typed.charAt(0)) == Character.toLowerCase(key[currentWordIndex].charAt(0));
@@ -289,6 +317,7 @@ public class MemorizationPage extends VBox {
         inputField.clear();
         currentWordIndex++;
 
+        // If there is a word after the current one, highlight it. Otherwise, report failure
         if (currentWordIndex < wordLabels.size()) {
             highlightWord(currentWordIndex);
             return true;
@@ -298,10 +327,12 @@ public class MemorizationPage extends VBox {
     }
 
     private void onVerseComplete() {
+
         rightColumn.getChildren().clear();
 
         String[] key = difficulty.getAnswerKey();
 
+        // Adds button to return to difficulty selector
         Button backBtn = new Button("\u2190 Back");
         backBtn.getStyleClass().add("back-btn");
         backBtn.setOnAction(e -> showDifficultySelector());
@@ -314,6 +345,7 @@ public class MemorizationPage extends VBox {
         Region spacerBottom = new Region();
         VBox.setVgrow(spacerBottom, Priority.ALWAYS);
 
+        // Displays "Complete!" because they completed it
         Label scoreTitle = new Label("Complete!");
         scoreTitle.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #333333;");
 
@@ -332,9 +364,13 @@ public class MemorizationPage extends VBox {
         verseReview.setLineSpacing(6);
         for (int i = 0; i < key.length; i++) {
             Label wordLabel = new Label(key[i]);
+
+            // If correct, the word will be green, otherwise orange
             String color = wordCorrect[i] ? "#1D9E75" : "#D85A30";
             wordLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
             verseReview.getChildren().add(wordLabel);
+
+            // Adds spaces in between words
             if (i < key.length - 1) {
                 Label space = new Label(" ");
                 space.setStyle("-fx-font-size: 16px;");
@@ -344,14 +380,19 @@ public class MemorizationPage extends VBox {
 
         Button actionBtn;
         if (numCorrect == key.length) {
+            // If the difficulty is passed, the button will return the user to the difficulty selector
             actionBtn = new Button("Continue");
             actionBtn.setOnAction(e -> showDifficultySelector());
-            if(currentDifficulty == nextDifficulty) {
-                unlockNextDifficulty();
+            // If the current difficulty is the max difficulty, then the max difficulty is raised
+            if(currentDifficulty == currentVerse.getNextDifficulty()) {
+                unlockNextDifficulty(currentVerse);
+
+                // Automatically selects the new max difficulty
                 if(currentDifficulty < 3)
                     currentDifficulty++;
             }
         } else {
+            // If the difficulty is failed, the button will allow the user to try again
             actionBtn = new Button("Retry");
             actionBtn.setOnAction(e -> startTask());
         }
@@ -364,6 +405,8 @@ public class MemorizationPage extends VBox {
         rightColumn.getChildren().addAll(topBar, spacer, scoreBox, verseReview, spacerBottom, actionBar);
     }
 
+
+    // Counts the number of true (correct) values in the array
     private int countCorrect(boolean[] arr) {
         int count = 0;
         for(int i = 0; i < arr.length; i++) {
@@ -374,18 +417,21 @@ public class MemorizationPage extends VBox {
         return count;
     }
 
+    // Changes the color of the score based on if it exeeds certain thresholds (100% -> 50% -> 0%)
     private String getScoreColor(int score, int total) {
         if (score >= total) return "#1D9E75";  // green
         if (score * 2 >= total) return "#BA7517";  // amber
         return "#D85A30";                   // red
     }
 
+    // Changes the message on completiong if the score exeeds certain thresholds (100% -> 50% -> 0%)
     private String getScoreMessage(int score, int total) {
         if (score >= total) return "Great work!";
         if (score * 2 >= total) return "Keep practicing!";
         return "Don't give up!";
     }
 
+    // Method used to return to the difficulty selector screen
     private void showDifficultySelector() {
         rightColumn.getChildren().clear();
 
@@ -396,6 +442,7 @@ public class MemorizationPage extends VBox {
     }       
 
     private void cycleLeft() {
+        // Doesn't let the user go lower than the lowest difficulty
         if (currentDifficulty > 0) {
             currentDifficulty--;
             refreshDifficultyUI();
@@ -403,36 +450,23 @@ public class MemorizationPage extends VBox {
     }
 
     private void cycleRight() {
-        if (currentDifficulty < Math.min(nextDifficulty, 3)) {
+        // Doesn't let the user go higher than the current or absolute max difficulty 
+        if (currentDifficulty < Math.min(currentVerse.getNextDifficulty(), 3)) {
             currentDifficulty++;
             refreshDifficultyUI();
         }
     }
 
     // Call this to unlock the next difficulty at runtime
-    public void unlockNextDifficulty() {
-        if(nextDifficulty < 4) {
-            pips[nextDifficulty].setFill(javafx.scene.paint.Color.web(DIFFICULTY_COLORS[nextDifficulty]));
-            nextDifficulty++;
-            if(nextDifficulty < 4) {
-            pips[nextDifficulty].setWidth(18);
-            pips[nextDifficulty].setHeight(18);
-            }
+    public void unlockNextDifficulty(MemorizedVerse verse) {
+        if(currentVerse.getNextDifficulty() < 4) {
+            verse.setNextDifficulty(verse.getNextDifficulty() + 1);
         }
 
         refreshDifficultyUI();
     }
 
-    // Call this when a to reset progress at runtime
-    public void resetProgress() {
-        nextDifficulty = 0;
-        refreshDifficultyUI();
-    }
-
     // Returns the currently displayed difficulty (0-indexed)
-    public int getSelectedDifficulty() {
-        return currentDifficulty;
-    }
 
     // --- Popup logic ---
     // =========================================================================
@@ -474,7 +508,7 @@ public class MemorizationPage extends VBox {
         ComboBox<String> diffBox = new ComboBox<>();
         diffBox.getItems().addAll(DIFFICULTY_LABELS);
         diffBox.setMaxWidth(Double.MAX_VALUE);
-        int diffIndex = Math.max(0, Math.min(verse.getDifficulty() - 1, DIFFICULTY_LABELS.length - 1));
+        int diffIndex = Math.max(0, Math.min(verse.getNextDifficulty(), DIFFICULTY_LABELS.length - 1));
         diffBox.getSelectionModel().select(diffIndex);
         diffBox.setOnAction(e -> {
             int selectedIndex = diffBox.getSelectionModel().getSelectedIndex();
