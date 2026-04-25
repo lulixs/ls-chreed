@@ -1,4 +1,4 @@
-package com.bibleapp.services;
+package com.bibleapp.difficulty;
 
 public interface Difficulty {
     int getNumBlanks();

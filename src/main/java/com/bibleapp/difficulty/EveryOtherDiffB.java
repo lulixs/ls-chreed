@@ -13,19 +13,14 @@ package com.bibleapp.difficulty;
  *   Display: "___  God  ___  loved  ___  world"
  *   Blanks:  3
  * 
- * NOTE!!!!!: No difficulty interface exists yet. Once it is created, this class should be updated to: 
- * public class EveryOtherDiffB implements _____
- * 
- * Additionally, when the interface is ready, ensure that getBlanksCount() and getDisplayVerse() 
- * match the method signatures defined in the interface.
  */
-public class EveryOtherDiffB {
+public class EveryOtherDiffB implements Difficulty {
  
-    private int blanksCount;
+    private int numBlanks;
     private String displayVerse;
  
     public EveryOtherDiffB(String verseText) {
-        blanksCount = 0;
+        numBlanks = 0;
         displayVerse = "";
  
         if (verseText == null || verseText.isBlank()) return;
@@ -36,19 +31,21 @@ public class EveryOtherDiffB {
         for (int i = 0; i < words.length; i++) {
             if (i % 2 == 0) {
                 display[i] = "___";
-                blanksCount++;
+                numBlanks++;
             } else {
                 display[i] = words[i];
             }
         }
  
-        displayVerse = String.join("  ", display);
+        displayVerse = String.join(" ", display);
     }
  
-    public int getBlanksCount() {
-        return blanksCount;
+    @Override
+    public int getNumBlanks() {
+        return numBlanks;
     }
  
+    @Override
     public String getDisplayVerse() {
         return displayVerse;
     }

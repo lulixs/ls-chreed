@@ -1,4 +1,5 @@
-package com.bibleapp.services;
+package com.bibleapp.difficulty;
+
 import com.bibleapp.data.MemorizedVerse;
 
 // The serving system that decides between the correct difficulty
@@ -12,18 +13,32 @@ public class VerseDifficultyServer {
 
         switch (level) {
             case MemorizedVerse.DIFFICULTY_COPY_DOWN:
-                difficulty = new CopyDownDifficulty(verse);
+                difficulty = new Difficulty() {
+                    @Override
+                    public int getNumBlanks() {
+                        return 0;
+                    }
+
+                    @Override
+                    public String getDisplayVerse() {
+                        return verse;
+                    }
+                };
                 break;
 
-            case MemorizedVerse.DIFFICULTY_EVERY_OTHER_A: 
-                difficulty = new EveryOtherDifficultyA(verse);
+            case MemorizedVerse.DIFFICULTY_EVERY_OTHER_A:
+                difficulty = new EveryOtherDiffA(verse);
                 break;
 
             case MemorizedVerse.DIFFICULTY_EVERY_OTHER_B:
-                difficulty = new EveryOtherDifficultyB(verse);
+                difficulty = new EveryOtherDiffB(verse);
                 break;
 
             case MemorizedVerse.DIFFICULTY_FULL_MEMORY:
+                difficulty = new FullMemory(verse);
+                break;
+
+            default:
                 difficulty = new FullMemory(verse);
                 break;
         }
