@@ -1,4 +1,4 @@
-package com.bibleapp.memorization;
+package com.bibleapp.difficulty;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,7 +11,7 @@ import java.util.List;
  *   prompt:  "For ____ so ____ the ____"
  *   answers: ["God", "loved", "world"]
  */
-public class EveryOtherA {
+public class EveryOtherDiffA implements Difficulty {
 
     public static final int DIFFICULTY_ID = 2;
 
@@ -19,7 +19,7 @@ public class EveryOtherA {
 
     private final String[] words;
 
-    public EveryOtherA(String verseText) {
+    public EveryOtherDiffA(String verseText) {
         this.words = verseText == null || verseText.isBlank()
                 ? new String[0]
                 : verseText.trim().split("\\s+");
@@ -35,7 +35,7 @@ public class EveryOtherA {
         return sb.toString();
     }
 
-    /** The original even-positioned words — the answer key, in order. */
+    /** The original even-positioned words, in order. */
     public List<String> getAnswers() {
         List<String> answers = new ArrayList<>();
         for (int i = 0; i < words.length; i++) {
@@ -48,21 +48,13 @@ public class EveryOtherA {
         return zeroBasedIndex % 2 == 0;
     }
 
-    /** Standalone demo so the class can be sanity-checked from the terminal. */
-    public static void main(String[] args) {
-        String verse = "For God so loved the world that he gave his only Son";
-        EveryOtherA mode = new EveryOtherA(verse);
+    @Override
+    public int getNumBlanks() {
+        return getAnswers().size();
+    }
 
-        System.out.println("=== Every-other A difficulty demo ===");
-        System.out.println("Verse:   " + verse);
-        System.out.println("Prompt:  " + mode.getPrompt());
-        System.out.println("Answers: " + mode.getAnswers());
-        System.out.println();
-
-        System.out.println("Iterating answers one at a time:");
-        List<String> answers = mode.getAnswers();
-        for (int i = 0; i < answers.size(); i++) {
-            System.out.println("  blank " + (i + 1) + " -> " + answers.get(i));
-        }
+    @Override
+    public String getDisplayVerse() {
+        return getPrompt();
     }
 }

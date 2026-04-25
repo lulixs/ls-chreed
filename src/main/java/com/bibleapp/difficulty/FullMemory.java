@@ -1,4 +1,4 @@
-package com.bibleapp.services;
+package com.bibleapp.difficulty;
 
 // Hides the entire verse so that User must recall it fully
 public class FullMemory implements Difficulty {
