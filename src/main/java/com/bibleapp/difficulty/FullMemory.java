@@ -1,32 +1,23 @@
 package com.bibleapp.difficulty;
 
-// Hides the entire verse so that User must recall it fully
-public class FullMemory implements Difficulty {
-    private int numBlanks;
-    private String displayVerse;
+/**
+ * Extends the difficulty class and requires the user to fill in each
+ *  word from memory starting with the first word (index 0).
+ *
+ * Holds data representing:
+ *   - the verse to be displayed
+ *   - the answer key
+ *
+ * Example:
+ *   Input:   "For God so loved the world"
+ *   Display: "___ ___ ___ ___ ___ ___"
+ *   Answer:  "For God so loved the world"
+ */
 
-    public FullMemory(String verse) {
-        String[] words = verse.split(" ");
+public class FullMemory extends Difficulty {
 
-        this.numBlanks = words.length;
-
-        StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < words.length; i++) {
-            sb.append("_____");
-            if (i < words.length - 1) {
-                sb.append(" ");
-            }
-        }
-        this.displayVerse = sb.toString();
-    }
-
-    @Override
-    public int getNumBlanks() {
-        return numBlanks;
-    }
-
-    @Override
-    public String getDisplayVerse() {
-        return displayVerse;
+    public FullMemory(String verseText) {
+        // Word will always have blank applied, no matter the index
+        super(verseText, n -> true);
     }
 }

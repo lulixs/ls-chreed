@@ -222,7 +222,7 @@ public class DataStore {
         entry.put(KEY_VERSE_CHAPTER,    (long) verse.getChapter());
         entry.put(KEY_VERSE_NUMBER,     (long) verse.getVerse());
         entry.put(KEY_VERSE_TEXT,       verse.getText());
-        entry.put(KEY_VERSE_DIFFICULTY, (long) verse.getDifficulty());
+        entry.put(KEY_VERSE_DIFFICULTY, (long) verse.getNextDifficulty());
         arr.add(entry);
 
         data.put(KEY_MEMORIZATION, arr);

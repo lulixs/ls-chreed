@@ -18,23 +18,27 @@ package com.bibleapp.data;
  */
 public class MemorizedVerse {
 
-    public static final int DIFFICULTY_COPY_DOWN     = 1;
-    public static final int DIFFICULTY_EVERY_OTHER_A = 2;
-    public static final int DIFFICULTY_EVERY_OTHER_B = 3;
-    public static final int DIFFICULTY_FULL_MEMORY   = 4;
+    // Code is much easier to read 0-indexed
+    public static final int DIFFICULTY_COPY_DOWN     = 0;
+    public static final int DIFFICULTY_EVERY_OTHER_A = 1;
+    public static final int DIFFICULTY_EVERY_OTHER_B = 2;
+    public static final int DIFFICULTY_FULL_MEMORY   = 3;
 
     private final String book;
     private final int    chapter;
     private final int    verse;
     private final String text;
-    private int          difficulty;
+    private int          nextDifficulty; // Maximum difficulty that can be selected for the verse
+    /* It doesn't work to fix a verse to a specific difficulty as the user may wish to go back to a lower difficulty.
+     * It works better to set a maximum difficulty to represent the next difficulty in the progression.
+     */
 
-    public MemorizedVerse(String book, int chapter, int verse, String text, int difficulty) {
-        this.book       = book;
-        this.chapter    = chapter;
-        this.verse      = verse;
-        this.text       = text;
-        this.difficulty = clampDifficulty(difficulty);
+    public MemorizedVerse(String book, int chapter, int verse, String text, int nextDifficulty) {
+        this.book           = book;
+        this.chapter        = chapter;
+        this.verse          = verse;
+        this.text           = text;
+        this.nextDifficulty = clampDifficulty(nextDifficulty);
     }
 
     // ── Getters ──────────────────────────────────────────────────────────────
@@ -48,7 +52,7 @@ public class MemorizedVerse {
     public int    getChapter()    { return chapter; }
     public int    getVerse()      { return verse; }
     public String getText()       { return text; }
-    public int    getDifficulty() { return difficulty; }
+    public int    getNextDifficulty() { return nextDifficulty; }
 
     /** Human-readable reference, e.g. "John 3:16". */
     public String getReference() {
@@ -56,7 +60,7 @@ public class MemorizedVerse {
     }
 
     /** Human-readable label for the current difficulty level. */
-    public String getDifficultyLabel() {
+    static public String getDifficultyLabel(int difficulty) {
         return switch (difficulty) {
             case DIFFICULTY_COPY_DOWN     -> "Copy-down";
             case DIFFICULTY_EVERY_OTHER_A -> "Every-other A";
@@ -68,18 +72,18 @@ public class MemorizedVerse {
 
     // ── Setters ──────────────────────────────────────────────────────────────
 
-    public void setDifficulty(int difficulty) {
-        this.difficulty = clampDifficulty(difficulty);
+    public void setNextDifficulty(int nextDifficulty) {
+        this.nextDifficulty = clampDifficulty(nextDifficulty);
     }
 
     // ── Internal ─────────────────────────────────────────────────────────────
 
     private static int clampDifficulty(int d) {
-        return Math.max(DIFFICULTY_COPY_DOWN, Math.min(DIFFICULTY_FULL_MEMORY, d));
+        return Math.max(DIFFICULTY_COPY_DOWN, Math.min(DIFFICULTY_FULL_MEMORY + 1, d));
     }
 
     @Override
     public String toString() {
-        return getReference() + " [" + getDifficultyLabel() + "]";
+        return getReference() + " [" + MemorizedVerse.getDifficultyLabel(nextDifficulty) + "]";
     }
 }
