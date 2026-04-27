@@ -5,7 +5,7 @@ import java.util.List;
 
 import com.bibleapp.data.DataStore;
 import com.bibleapp.data.MemorizedVerse;
-import com.bibleapp.services.VerseDifficultyServer;
+import com.bibleapp.difficulty.VerseDifficultyServer;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
