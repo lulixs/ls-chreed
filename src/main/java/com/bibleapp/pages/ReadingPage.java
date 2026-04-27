@@ -13,6 +13,7 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
+import javafx.util.StringConverter;
 import javafx.util.Duration;
 
 import java.util.ArrayList;
@@ -135,8 +136,36 @@ public class ReadingPage extends VBox {
         SpinnerValueFactory.IntegerSpinnerValueFactory spinnerFactory =
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 150, 1);
         chapterSpinner = new Spinner<>(spinnerFactory);
+        chapterSpinner.setEditable(true);
         chapterSpinner.setPrefWidth(70);
         chapterSpinner.getStyleClass().add("chapter-spinner");
+        spinnerFactory.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(Integer value) {
+                return value == null ? "" : value.toString();
+            }
+
+            @Override
+            public Integer fromString(String text) {
+                if (text == null || text.isBlank()) {
+                    return spinnerFactory.getValue();
+                }
+
+                try {
+                    int parsed = Integer.parseInt(text.trim());
+                    return Math.max(spinnerFactory.getMin(), Math.min(spinnerFactory.getMax(), parsed));
+                } catch (NumberFormatException ex) {
+                    return spinnerFactory.getValue();
+                }
+            }
+        });
+
+        chapterSpinner.getEditor().setOnAction(event -> commitChapterEditorText(spinnerFactory));
+        chapterSpinner.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
+            if (!isFocused) {
+                commitChapterEditorText(spinnerFactory);
+            }
+        });
 
         // When the user picks a book, cap the spinner to that book's chapter count.
         // If the current chapter is now out of range, drop it down to the new max.
@@ -166,17 +195,25 @@ public class ReadingPage extends VBox {
 
         configureTranslationSearch();
         setTranslations(FALLBACK_TRANSLATIONS);
+        bookCombo.getSelectionModel().select("Genesis");
         fetchPause.setOnFinished(event -> fetchAndPrintNow());
 
         translationCombo.valueProperty().addListener((obs, oldV, newV) -> scheduleFetch());
         bookCombo.valueProperty().addListener((obs, oldV, newV) -> scheduleFetch());
         chapterSpinner.valueProperty().addListener((obs, oldV, newV) -> scheduleFetch());
 
+        scheduleFetch();
         loadTranslations();
     }
 
     private void scheduleFetch() {
         fetchPause.playFromStart();
+    }
+
+    private void commitChapterEditorText(SpinnerValueFactory.IntegerSpinnerValueFactory spinnerFactory) {
+        String text = chapterSpinner.getEditor().getText();
+        Integer value = spinnerFactory.getConverter().fromString(text);
+        spinnerFactory.setValue(value);
     }
 
     private void fetchAndPrintNow() {
@@ -197,20 +234,17 @@ public class ReadingPage extends VBox {
         chapterDisplay.setText("Loading " + reference + " in " + translation.displayLabel() + "...");
 
         Thread t = new Thread(() -> {
-            System.out.println("=== Reading: " + reference + " (" + translation.identifier() + ") ===");
             try {
                 BiblePassage passage = apiClient.getPassage(reference, translation.identifier());
                 if (requestId != fetchRequestId) {
                     return;
                 }
-                System.out.println(passage);
                 Platform.runLater(() -> {
                     if (requestId == fetchRequestId) {
                         chapterDisplay.setText(buildDisplayText(passage));
                     }
                 });
             } catch (BibleApiException e) {
-                System.err.println("ERROR: " + e.getMessage());
                 if (requestId != fetchRequestId) {
                     return;
                 }

@@ -1,4 +1,5 @@
-package com.bibleapp.services;
+package com.bibleapp.difficulty;
+
 import com.bibleapp.data.MemorizedVerse;
 import com.bibleapp.difficulty.*;
 
@@ -24,6 +25,10 @@ public class VerseDifficultyServer {
                 break;
 
             case MemorizedVerse.DIFFICULTY_FULL_MEMORY:
+                difficulty = new FullMemory(verse);
+                break;
+
+            default:
                 difficulty = new FullMemory(verse);
                 break;
         }

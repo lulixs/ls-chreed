@@ -20,6 +20,7 @@ public class App extends StackPane {
     private final BorderPane contentArea;
     private final HBox mainView;
     private final VBox sidebar;
+    private final ReadingPage readingPage;
     private StackPane userIcon;
     private Runnable currentClosePopupHandler;
 
@@ -28,6 +29,7 @@ public class App extends StackPane {
     public App() {
         getStyleClass().add("app");
 
+        readingPage = new ReadingPage();
         sidebar = buildSidebar();
 
         contentArea = new BorderPane();
@@ -163,10 +165,10 @@ public class App extends StackPane {
 
     private void showPage(String name) {
         switch (name) {
-            case "Read" -> contentArea.setCenter(new ReadingPage());
+            case "Read" -> contentArea.setCenter(readingPage);
             case "Plans" -> contentArea.setCenter(new ReadingPlansPage());
             case "Stats" -> contentArea.setCenter(new StatisticsPage());
-            case "Memorize" -> contentArea.setCenter(new MemorizationPage(new StackPane()));
+            case "Memorize" -> contentArea.setCenter(new MemorizationPage(this));
         }
     }
 
