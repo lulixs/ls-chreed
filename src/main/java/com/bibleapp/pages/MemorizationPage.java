@@ -527,111 +527,137 @@ public class MemorizationPage extends VBox {
     }
 
     private void showAddVersePopup() {
+
         StackPane popupOverlay = new StackPane();
         popupOverlay.getStyleClass().add("popup-overlay");
         popupOverlay.setOnMouseClicked(e -> closePopup());
-
+    
         VBox popupContainer = new VBox(10);
         popupContainer.getStyleClass().add("memorize-popup");
         popupContainer.setPadding(new Insets(16));
         popupContainer.setMaxWidth(500);
         popupContainer.setMinWidth(350);
-
+    
         Label popupTitle = new Label("Add Verse");
         popupTitle.getStyleClass().add("popup-title");
-
+    
         Button closeBtn = new Button("X");
         closeBtn.getStyleClass().add("popup-close-btn");
         closeBtn.setOnAction(e -> closePopup());
-
+    
         HBox header = new HBox();
         header.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(popupTitle, Priority.ALWAYS);
         header.getChildren().addAll(popupTitle, closeBtn);
-
-        TextField bookField = new TextField();
-        bookField.setPromptText("Book (e.g. John)");
-
-        TextField chapterField = new TextField();
-        chapterField.setPromptText("Chapter (e.g. 3)");
-
-        TextField verseNumField = new TextField();
-        verseNumField.setPromptText("Verse (e.g. 16)");
-
-        HBox locationRow = new HBox(8, bookField, chapterField, verseNumField);
-        HBox.setHgrow(bookField, Priority.ALWAYS);
+    
+        // ----------------------------
+        // Book dropdown
+        // ----------------------------
+        ComboBox<String> bookBox = new ComboBox<>();
+        bookBox.getItems().addAll(
+            "Genesis","Exodus","Leviticus","Numbers","Deuteronomy",
+            "Joshua","Judges","Ruth","1 Samuel","2 Samuel",
+            "1 Kings","2 Kings","1 Chronicles","2 Chronicles",
+            "Ezra","Nehemiah","Esther","Job","Psalms","Proverbs",
+            "Ecclesiastes","Song of Solomon","Isaiah","Jeremiah",
+            "Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos",
+            "Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah",
+            "Haggai","Zechariah","Malachi","Matthew","Mark","Luke",
+            "John","Acts","Romans","1 Corinthians","2 Corinthians",
+            "Galatians","Ephesians","Philippians","Colossians",
+            "1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy",
+            "Titus","Philemon","Hebrews","James","1 Peter","2 Peter",
+            "1 John","2 John","3 John","Jude","Revelation"
+        );
+        bookBox.setPromptText("Select book");
+        bookBox.setMaxWidth(Double.MAX_VALUE);
+    
+        // ----------------------------
+        // Chapter + Verse spinners
+        // ----------------------------
+        Spinner<Integer> chapterSpinner = new Spinner<>(1, 150, 1);
+        chapterSpinner.setEditable(true);
+        chapterSpinner.setPrefWidth(120);
+    
+        Spinner<Integer> verseSpinner = new Spinner<>(1, 176, 1);
+        verseSpinner.setEditable(true);
+        verseSpinner.setPrefWidth(120);
+    
+        HBox locationRow = new HBox(10,
+            new Label("Chapter"), chapterSpinner,
+            new Label("Verse"), verseSpinner
+        );
         locationRow.setAlignment(Pos.CENTER_LEFT);
-
-        TextArea textArea = new TextArea();
-        textArea.setPromptText("Verse text…");
-        textArea.setWrapText(true);
-        textArea.setPrefRowCount(4);
-
-        ComboBox<String> diffBox = new ComboBox<>();
-        diffBox.getItems().addAll(DIFFICULTY_LABELS);
-        diffBox.getSelectionModel().selectFirst();
-        diffBox.setMaxWidth(Double.MAX_VALUE);
-
+    
+        // ----------------------------
+        // Error label
+        // ----------------------------
         Label errorLabel = new Label();
         errorLabel.setStyle("-fx-text-fill: red;");
-
+    
+        // ----------------------------
+        // Save button
+        // ----------------------------
         Button saveBtn = new Button("Save Verse");
         saveBtn.getStyleClass().add("add-verse-btn");
+    
         saveBtn.setOnAction(e -> {
+    
             errorLabel.setText("");
-
-            String book     = bookField.getText().trim();
-            String chapStr  = chapterField.getText().trim();
-            String verseStr = verseNumField.getText().trim();
-            String text     = textArea.getText().trim();
-
-            if (book.isEmpty() || chapStr.isEmpty() || verseStr.isEmpty() || text.isEmpty()) {
-                errorLabel.setText("Please fill in all fields.");
+    
+            String book = bookBox.getValue();
+            int chapter = chapterSpinner.getValue();
+            int verse   = verseSpinner.getValue();
+    
+            if (book == null || book.isEmpty()) {
+                errorLabel.setText("Please select a book.");
                 return;
             }
-
-            int chapter, verseNum;
-            try {
-                chapter  = Integer.parseInt(chapStr);
-                verseNum = Integer.parseInt(verseStr);
-            } catch (NumberFormatException ex) {
-                errorLabel.setText("Chapter and verse must be numbers.");
-                return;
-            }
-
-            if (chapter <= 0 || verseNum <= 0) {
+    
+            if (chapter <= 0 || verse <= 0) {
                 errorLabel.setText("Chapter and verse must be greater than 0.");
                 return;
             }
-
-            int difficulty = diffBox.getSelectionModel().getSelectedIndex() + 1;
-            MemorizedVerse newVerse = new MemorizedVerse(book, chapter, verseNum, text, difficulty);
+    
+            // Create verse (NO text, NO difficulty)
+            MemorizedVerse newVerse =
+                new MemorizedVerse(book, chapter, verse, "", 0);
+    
             DataStore.addVerse(newVerse);
             loadVerseList();
             closePopup();
         });
-
-        VBox popupContentArea = new VBox(10);
-        popupContentArea.getChildren().addAll(
-            new Label("Location:"), locationRow,
-            new Label("Verse text:"), textArea,
-            new Label("Difficulty:"), diffBox,
-            errorLabel, saveBtn
+    
+        // ----------------------------
+        // Layout
+        // ----------------------------
+        VBox popupContent = new VBox(12,
+            new Label("Book"),
+            bookBox,
+            locationRow,
+            errorLabel,
+            saveBtn
         );
-
-        popupContainer.getChildren().addAll(header, popupContentArea);
-
+    
+        popupContainer.getChildren().addAll(header, popupContent);
+    
         StackPane popupWrapper = new StackPane(popupContainer);
         popupWrapper.getStyleClass().add("popup-wrapper");
         popupWrapper.setAlignment(Pos.CENTER);
+    
         popupContainer.setOnMouseClicked(e -> e.consume());
-
+    
         appRoot.getChildren().addAll(popupOverlay, popupWrapper);
+    
         currentClosePopupHandler = () ->
             appRoot.getChildren().removeAll(popupOverlay, popupWrapper);
+    
         appRoot.setOnKeyPressed(e -> {
-            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) closePopup();
+            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                closePopup();
+            }
         });
+    
         appRoot.requestFocus();
     }
 
