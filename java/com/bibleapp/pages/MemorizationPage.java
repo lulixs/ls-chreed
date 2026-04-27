@@ -106,70 +106,69 @@ public class MemorizationPage extends VBox {
         popupContentArea.setPadding(new Insets(10));
     
         // ── CHANGED: form fields instead of placeholder label ──────────────────
-    
+        // Book dropdown
         Label bookLabel = new Label("Book");
-        TextField bookField = new TextField();
-        bookField.setPromptText("e.g. John");
-    
+        ComboBox<String> bookBox = new ComboBox<>();
+        bookBox.getItems().addAll(
+             "Genesis", "Exodus", "Leviticus", "Numbers", "Deuteronomy",
+                "Psalms", "Proverbs", "Isaiah", "Matthew", "Mark",
+                "Luke", "John", "Romans"
+        );
+        bookBox.setPromptText("Select book");
+
+        // Chapter spinner
         Label chapterLabel = new Label("Chapter");
-        TextField chapterField = new TextField();
-        chapterField.setPromptText("e.g. 3");
-    
+        Spinner<Integer> chapterSpinner = new Spinner<>(1, 200, 1);
+        chapterSpinner.setEditable(true);
+
+        // Verse spinner
         Label verseLabel = new Label("Verse");
-        TextField verseField = new TextField();
-        verseField.setPromptText("e.g. 16");
-    
+        Spinner<Integer> verseSpinner = new Spinner<>(1, 200, 1);
+        verseSpinner.setEditable(true);
+
         Label errorLabel = new Label("");
         errorLabel.setStyle("-fx-text-fill: red;");
-    
+
         Button saveBtn = new Button("Save");
         saveBtn.getStyleClass().add("add-verse-btn");
+
         saveBtn.setOnAction(e -> {
-            String book = bookField.getText().trim();
-            String chapterText = chapterField.getText().trim();
-            String verseText = verseField.getText().trim();
-    
-            // Validate
-            if (book.isEmpty() || chapterText.isEmpty() || verseText.isEmpty()) {
-                errorLabel.setText("All fields are required.");
-                return;
-            }
-            int chapter, verse;
-            try {
-                chapter = Integer.parseInt(chapterText);
-                verse   = Integer.parseInt(verseText);
-            } catch (NumberFormatException ex) {
-                errorLabel.setText("Chapter and Verse must be whole numbers.");
-                return;
-            }
-            if (chapter < 1 || verse < 1) {
-                errorLabel.setText("Chapter and Verse must be positive.");
-                return;
-            }
-    
-            // Build JSON entry
-            JSONObject entry = new JSONObject();
-            entry.put("book",    book);
-            entry.put("chapter", (long) chapter);   // json-simple uses Long
-            entry.put("verse",   (long) verse);
-    
-            // Load → append → save
-            JSONObject data = DataStore.load();
-            JSONArray verses = (JSONArray) data.get("memorized_verses");
-            if (verses == null) {
-                verses = new JSONArray();
-                data.put("memorized_verses", verses);
-            }
-            verses.add(entry);
-            DataStore.save(data);
-    
-            closePopup();
-        });
-    
+            String book = bookBox.getValue();
+            int chapter = chapterSpinner.getValue();
+            int verse = verseSpinner.getValue();
+
+        if (book == null || book.isEmpty()) {
+            errorLabel.setText("Book is required.");
+            return;
+        }
+
+        if (chapter < 1 || verse < 1) {
+            errorLabel.setText("Chapter and Verse must be positive.");
+            return;
+        }
+
+        JSONObject entry = new JSONObject();
+        entry.put("book", book);
+        entry.put("chapter", (long) chapter);
+        entry.put("verse", (long) verse);
+
+        JSONObject data = DataStore.load();
+        JSONArray verses = (JSONArray) data.get("memorized_verses");
+
+        if (verses == null) {
+            verses = new JSONArray();
+            data.put("memorized_verses", verses);
+        }
+
+        verses.add(entry);
+        DataStore.save(data);
+
+        closePopup();
+    });
         popupContentArea.getChildren().addAll(
-            bookLabel, bookField,
-            chapterLabel, chapterField,
-            verseLabel, verseField,
+            bookLabel, bookBox,
+            chapterLabel, chapterSpinner,
+            verseLabel, verseSpinner,
             errorLabel,
             saveBtn
         );
