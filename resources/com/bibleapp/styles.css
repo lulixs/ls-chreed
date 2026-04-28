@@ -1,0 +1,449 @@
+/* ─── Root ────────────────────────────────────────────────────────────────── */
+.root {
+    -fx-background-color: #f0f4f8;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+.app {
+    -fx-background-color: #f0f4f8;
+}
+
+/* ─── Sidebar ─────────────────────────────────────────────────────────────── */
+.sidebar {
+    -fx-background-color: #3d5a80;
+    -fx-min-width: 240px;
+    -fx-pref-width: 240px;
+    -fx-border-width: 0 1 0 0;
+    -fx-border-color: #2c4a6e;
+}
+
+.sidebar-title-box {
+    -fx-padding: 28 20 22 20;
+}
+
+.sidebar-title {
+    -fx-font-size: 21px;
+    -fx-font-family: "Georgia";
+    -fx-font-style: italic;
+    -fx-text-fill: #2a2a2a;
+}
+
+.sidebar-subtitle {
+    -fx-font-size: 10px;
+    -fx-text-fill: #b0a898;
+    -fx-font-family: "Arial";
+}
+
+.sidebar-divider {
+    -fx-background-color: transparent;
+    -fx-min-height: 0;
+    -fx-pref-height: 0;
+    -fx-max-height: 0;
+}
+
+/* ─── Nav Buttons ─────────────────────────────────────────────────────────── */
+/* Using Label instead of HBox eliminates all internal alignment issues.
+   Every button has identical padding so text is perfectly flush. */
+.nav-btn {
+    -fx-padding: 14 22;
+    -fx-font-size: 14px;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-text-fill: #e0f0ff;
+    -fx-background-color: rgba(255, 255, 255, 0.08);
+    -fx-cursor: hand;
+}
+
+.nav-btn:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.18);
+    -fx-text-fill: #ffffff;
+}
+
+.nav-btn--active {
+    -fx-background-color: #e07a5f;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+}
+
+.nav-btn--active:hover {
+    -fx-background-color: #e88b70;
+}
+
+/* ─── Content Area ────────────────────────────────────────────────────────── */
+.content-area {
+    -fx-background-color: #f0f4f8;
+    -fx-padding: 40;
+}
+
+/* ─── Pages ───────────────────────────────────────────────────────────────── */
+.page {
+    -fx-background-color: transparent;
+}
+
+.page-title {
+    -fx-font-size: 24px;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2a2a2a;
+    -fx-padding: 0 0 6 0;
+}
+
+.page-todo {
+    -fx-font-size: 13px;
+    -fx-font-family: "Arial";
+    -fx-text-fill: #bbb;
+    -fx-padding: 4 0 0 2;
+}
+
+/* ─── Main View ───────────────────────────────────────────────────────────── */
+.main-view {
+    -fx-background-color: #f0f4f8;
+}
+
+/* ─── User Icon ───────────────────────────────────────────────────────────── */
+.user-icon-container {
+    -fx-cursor: hand;
+}
+
+.user-icon-circle {
+    -fx-fill: #e07a5f;
+}
+
+.user-icon-text {
+    -fx-font-size: 14px;
+    -fx-font-family: "Arial";
+    -fx-font-weight: bold;
+    -fx-fill: #ffffff;
+}
+
+.user-section {
+    -fx-background-color: #2c4a6e;
+    -fx-cursor: hand;
+    -fx-pref-width: 240;
+    -fx-min-width: 240;
+}
+
+.user-name-label {
+    -fx-font-size: 15px;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-text-fill: #ffffff;
+    -fx-font-weight: bold;
+}
+
+/* ─── User Popup ──────────────────────────────────────────────────────────── */
+.popup-overlay {
+    -fx-background-color: rgba(0, 0, 0, 0.2);
+}
+
+.popup-container {
+    -fx-alignment: center;
+}
+
+.user-popup {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #e2ddd7;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 12, 0, 0, 4);
+    -fx-min-width: 200px;
+    -fx-padding: 0 0 0 0;
+}
+
+.popup-close-btn {
+    -fx-font-size: 16px;
+    -fx-font-family: "Arial";
+    -fx-font-weight: bold;
+    -fx-text-fill: #888880;
+    -fx-cursor: hand;
+    -fx-padding: 2 6;
+}
+
+.popup-close-btn:hover {
+    -fx-text-fill: #e07a5f;
+}
+
+.popup-placeholder {
+    -fx-font-size: 14px;
+    -fx-font-family: "Arial";
+    -fx-text-fill: #888880;
+}
+
+/* ─── Back Button ─────────────────────────────────────────────────────────── */
+.back-btn {
+    -fx-padding: 10 24;
+    -fx-font-size: 13px;
+    -fx-font-family: "Arial";
+    -fx-text-fill: #555;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e2ddd7;
+    -fx-border-width: 1;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+}
+
+.back-btn:hover {
+    -fx-border-color: #e07a5f;
+    -fx-text-fill: #e07a5f;
+}
+
+/* ─── Reading Page Selectors ────────────────────────────────────────────────── */
+.combo-box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-effect: null;
+}
+
+.combo-box:hover {
+    -fx-border-color: #b0b7be;
+}
+
+.combo-box:focused {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-effect: null;
+}
+
+.combo-box .list-cell {
+    -fx-background-color: #ffffff;
+}
+
+.combo-box-base {
+    -fx-background-color: #ffffff;
+}
+
+.combo-box-popup .list-view {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-effect: null;
+}
+
+.chapter-spinner {
+    -fx-font-size: 13px;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-pref-width: 70;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+}
+
+.chapter-display {
+    -fx-font-size: 14px;
+    -fx-font-family: "Georgia", serif;
+    -fx-line-spacing: 4;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 20;
+    -fx-wrap-text: true;
+}
+
+/* ─── Reading Plans Page ──────────────────────────────────────────────────── */
+.reading-plans-left-column {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 15;
+}
+
+.reading-plans-right-column {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 15;
+}
+
+.reading-plans-scroll-content {
+    -fx-background-color: transparent;
+}
+
+.reading-plans-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.reading-plans-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+.column-header {
+    -fx-font-size: 16px;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2a2a2a;
+}
+
+.add-plan-btn {
+    -fx-font-size: 14px;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-text-fill: #ffffff;
+    -fx-background-color: #e07a5f;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 10 24;
+    -fx-cursor: hand;
+}
+
+.add-plan-btn:hover {
+    -fx-background-color: #e88b70;
+}
+
+/* ─── Reading Plans Popup ─────────────────────────────────────────────────── */
+.reading-plans-popup {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 12, 0, 0, 4);
+    -fx-padding: 20;
+}
+
+.popup-title {
+    -fx-font-size: 18px;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2a2a2a;
+}
+
+.popup-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.popup-scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+.popup-scroll-content {
+    -fx-background-color: transparent;
+}
+
+.popup-wrapper {
+    -fx-background-color: transparent;
+}
+
+/* ─── Memorize Page ─────────────────────────────────────────────────────── */
+.memorize-left-column {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 15;
+}
+
+.memorize-right-column {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 15;
+}
+
+.memorize-scroll-content {
+    -fx-background-color: transparent;
+}
+
+.memorize-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.memorize-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+.add-verse-btn {
+    -fx-font-size: 14px;
+    -fx-font-family: "Inter", "Segoe UI", sans-serif;
+    -fx-text-fill: #ffffff;
+    -fx-background-color: #e07a5f;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 10 24;
+    -fx-cursor: hand;
+}
+
+.add-verse-btn:hover {
+    -fx-background-color: #e88b70;
+}
+
+/* ─── Memorize Popup ────────────────────────────────────────────────────── */
+.memorize-popup {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 12, 0, 0, 4);
+    -fx-padding: 20;
+}
+
+/* ─── Stats Page ──────────────────────────────────────────────────────────── */
+.stats-left-column {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 15;
+}
+
+.stats-right-column {
+    -fx-background-color: transparent;
+    -fx-spacing: 20;
+}
+
+.stats-scroll-content {
+    -fx-background-color: transparent;
+}
+
+.stats-scroll {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.stats-scroll .viewport {
+    -fx-background-color: transparent;
+}
+
+.stats-streak-section {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 15;
+    -fx-pref-height: 250;
+}
+
+.stats-streak-content {
+    -fx-background-color: transparent;
+}
+
+.stats-progress-section {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7de;
+    -fx-border-width: 1;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 15;
+    -fx-pref-height: 250;
+}
+
+.stats-progress-content {
+    -fx-background-color: transparent;
+}

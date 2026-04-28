@@ -14,6 +14,18 @@ import javafx.scene.layout.*;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextFlow;
 
+import java.util.Map;
+import java.util.HashMap;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+
 public class MemorizationPage extends VBox {
 
     private static final String[] DIFFICULTY_LABELS = {
@@ -22,6 +34,84 @@ public class MemorizationPage extends VBox {
         "Every-other B",
         "Full-memory"
     };
+
+    private static final String[] BIBLE_BOOK_ORDER = {
+        "Genesis","Exodus","Leviticus","Numbers","Deuteronomy",
+        "Joshua","Judges","Ruth","1 Samuel","2 Samuel",
+        "1 Kings","2 Kings","1 Chronicles","2 Chronicles",
+        "Ezra","Nehemiah","Esther","Job","Psalms","Proverbs",
+        "Ecclesiastes","Song of Songs","Isaiah","Jeremiah",
+        "Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos",
+        "Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah",
+        "Haggai","Zechariah","Malachi","Matthew","Mark","Luke",
+        "John","Acts","Romans","1 Corinthians","2 Corinthians",
+        "Galatians","Ephesians","Philippians","Colossians",
+        "1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy",
+        "Titus","Philemon","Hebrews","James","1 Peter","2 Peter",
+        "1 John","2 John","3 John","Jude","Revelation"
+    };
+
+    private static final Map<String, Map<Integer, Integer>> BIBLE = loadBibleStructure();
+
+    private static Map<String, Map<Integer, Integer>> loadBibleStructure() {
+        try (InputStream is = openBibleStructureStream()) {
+            if (is == null) {
+                throw new IOException("BibleStructure.json was not found on the classpath or in project resources.");
+            }
+
+            JSONParser parser = new JSONParser();
+            JSONObject root = (JSONObject) parser.parse(new InputStreamReader(is, StandardCharsets.UTF_8));
+            Map<String, Map<Integer, Integer>> bible = new HashMap<>();
+
+            for (Object bookKey : root.keySet()) {
+                String book = (String) bookKey;
+                JSONObject chapters = (JSONObject) root.get(book);
+
+                Map<Integer, Integer> chapterMap = new HashMap<>();
+
+                for (Object chapterKey : chapters.keySet()) {
+                    int chapter = Integer.parseInt((String) chapterKey);
+                    int verses = ((Long) chapters.get(chapterKey)).intValue();
+                    chapterMap.put(chapter, verses);
+                }
+
+                bible.put(book, chapterMap);
+            }
+
+            return bible;
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to load Bible structure", e);
+        }
+    }
+
+    private static InputStream openBibleStructureStream() throws IOException {
+        InputStream classResource = MemorizationPage.class.getResourceAsStream("/com/bibleapp/BibleStructure.json");
+        if (classResource != null) {
+            return classResource;
+        }
+
+        ClassLoader classLoader = MemorizationPage.class.getClassLoader();
+        if (classLoader != null) {
+            InputStream loaderResource = classLoader.getResourceAsStream("com/bibleapp/BibleStructure.json");
+            if (loaderResource != null) {
+                return loaderResource;
+            }
+        }
+
+        Path[] fallbackPaths = new Path[] {
+            Path.of("src", "main", "resources", "com", "bibleapp", "BibleStructure.json"),
+            Path.of("resources", "com", "bibleapp", "BibleStructure.json"),
+            Path.of("target", "classes", "com", "bibleapp", "BibleStructure.json")
+        };
+
+        for (Path path : fallbackPaths) {
+            if (Files.exists(path)) {
+                return Files.newInputStream(path);
+            }
+        }
+
+        return null;
+    }
 
     private final VBox leftScrollContent;
     private final StackPane appRoot;
@@ -532,133 +622,94 @@ public class MemorizationPage extends VBox {
         popupOverlay.getStyleClass().add("popup-overlay");
         popupOverlay.setOnMouseClicked(e -> closePopup());
     
-        VBox popupContainer = new VBox(10);
+        VBox popupContainer = new VBox(8);
         popupContainer.getStyleClass().add("memorize-popup");
-        popupContainer.setPadding(new Insets(16));
-        popupContainer.setMaxWidth(500);
-        popupContainer.setMinWidth(350);
+        popupContainer.setPadding(new Insets(10));
+        popupContainer.setMaxWidth(380);
+        popupContainer.setMinWidth(320);
+        popupContainer.setMaxHeight(200);   // 👈 controls height
+        popupContainer.setPrefHeight(180);  // optional fine-tune
     
-        Label popupTitle = new Label("Add Verse");
-        popupTitle.getStyleClass().add("popup-title");
-    
+        Label title = new Label("Add Verse");
         Button closeBtn = new Button("X");
-        closeBtn.getStyleClass().add("popup-close-btn");
         closeBtn.setOnAction(e -> closePopup());
     
-        HBox header = new HBox();
+        HBox header = new HBox(title, closeBtn);
         header.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(popupTitle, Priority.ALWAYS);
-        header.getChildren().addAll(popupTitle, closeBtn);
     
-        // ----------------------------
-        // Book dropdown
-        // ----------------------------
         ComboBox<String> bookBox = new ComboBox<>();
-        bookBox.getItems().addAll(
-            "Genesis","Exodus","Leviticus","Numbers","Deuteronomy",
-            "Joshua","Judges","Ruth","1 Samuel","2 Samuel",
-            "1 Kings","2 Kings","1 Chronicles","2 Chronicles",
-            "Ezra","Nehemiah","Esther","Job","Psalms","Proverbs",
-            "Ecclesiastes","Song of Solomon","Isaiah","Jeremiah",
-            "Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos",
-            "Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah",
-            "Haggai","Zechariah","Malachi","Matthew","Mark","Luke",
-            "John","Acts","Romans","1 Corinthians","2 Corinthians",
-            "Galatians","Ephesians","Philippians","Colossians",
-            "1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy",
-            "Titus","Philemon","Hebrews","James","1 Peter","2 Peter",
-            "1 John","2 John","3 John","Jude","Revelation"
-        );
-        bookBox.setPromptText("Select book");
-        bookBox.setMaxWidth(Double.MAX_VALUE);
+        for (String book : BIBLE_BOOK_ORDER) {
+            if (BIBLE.containsKey(book)) {
+                bookBox.getItems().add(book);
+            }
+        }
+        bookBox.setPromptText("Book");
     
-        // ----------------------------
-        // Chapter + Verse spinners
-        // ----------------------------
         Spinner<Integer> chapterSpinner = new Spinner<>(1, 150, 1);
-        chapterSpinner.setEditable(true);
-        chapterSpinner.setPrefWidth(120);
+        Spinner<Integer> verseSpinner = new Spinner<>(1, 200, 1);
     
-        Spinner<Integer> verseSpinner = new Spinner<>(1, 176, 1);
-        verseSpinner.setEditable(true);
-        verseSpinner.setPrefWidth(120);
+        chapterSpinner.setPrefWidth(90);
+        verseSpinner.setPrefWidth(90);
     
-        HBox locationRow = new HBox(10,
-            new Label("Chapter"), chapterSpinner,
-            new Label("Verse"), verseSpinner
-        );
-        locationRow.setAlignment(Pos.CENTER_LEFT);
+        Label error = new Label();
+        error.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
     
-        // ----------------------------
-        // Error label
-        // ----------------------------
-        Label errorLabel = new Label();
-        errorLabel.setStyle("-fx-text-fill: red;");
-    
-        // ----------------------------
-        // Save button
-        // ----------------------------
-        Button saveBtn = new Button("Save Verse");
-        saveBtn.getStyleClass().add("add-verse-btn");
-    
+        Button saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
     
-            errorLabel.setText("");
+            error.setText("");
     
             String book = bookBox.getValue();
             int chapter = chapterSpinner.getValue();
-            int verse   = verseSpinner.getValue();
+            int verse = verseSpinner.getValue();
     
-            if (book == null || book.isEmpty()) {
-                errorLabel.setText("Please select a book.");
+            if (book == null) {
+                error.setText("Select a book.");
                 return;
             }
     
-            if (chapter <= 0 || verse <= 0) {
-                errorLabel.setText("Chapter and verse must be greater than 0.");
+            Map<Integer, Integer> chapters = BIBLE.get(book);
+    
+            if (chapters == null || !chapters.containsKey(chapter)) {
+                error.setText("Invalid chapter for " + book);
                 return;
             }
     
-            // Create verse (NO text, NO difficulty)
-            MemorizedVerse newVerse =
+            int maxVerse = chapters.get(chapter);
+    
+            if (verse < 1 || verse > maxVerse) {
+                error.setText("Chapter " + chapter + " has 1-" + maxVerse + " verses.");
+                return;
+            }
+    
+            MemorizedVerse verseObj =
                 new MemorizedVerse(book, chapter, verse, "", 0);
     
-            DataStore.addVerse(newVerse);
+            DataStore.addVerse(verseObj);
             loadVerseList();
             closePopup();
         });
     
-        // ----------------------------
-        // Layout
-        // ----------------------------
-        VBox popupContent = new VBox(12,
-            new Label("Book"),
+        VBox content = new VBox(8,
             bookBox,
-            locationRow,
-            errorLabel,
+            new HBox(8, new Label("Ch"), chapterSpinner,
+                          new Label("V"), verseSpinner),
+            error,
             saveBtn
         );
     
-        popupContainer.getChildren().addAll(header, popupContent);
+        popupContainer.getChildren().addAll(header, content);
     
-        StackPane popupWrapper = new StackPane(popupContainer);
-        popupWrapper.getStyleClass().add("popup-wrapper");
-        popupWrapper.setAlignment(Pos.CENTER);
+        StackPane wrapper = new StackPane(popupContainer);
+        wrapper.setAlignment(Pos.CENTER);
+
+        // prevents full-screen stretching
+        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
     
-        popupContainer.setOnMouseClicked(e -> e.consume());
-    
-        appRoot.getChildren().addAll(popupOverlay, popupWrapper);
+        appRoot.getChildren().addAll(popupOverlay, wrapper);
     
         currentClosePopupHandler = () ->
-            appRoot.getChildren().removeAll(popupOverlay, popupWrapper);
-    
-        appRoot.setOnKeyPressed(e -> {
-            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
-                closePopup();
-            }
-        });
-    
-        appRoot.requestFocus();
+            appRoot.getChildren().removeAll(popupOverlay, wrapper);
     }
 
     private void closePopup() {
