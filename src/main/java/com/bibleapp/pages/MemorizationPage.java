@@ -639,10 +639,9 @@ public class MemorizationPage extends VBox {
         popupContainer.setPrefHeight(180);  // optional fine-tune
     
         Label title = new Label("Add Verse");
-        Button closeBtn = new Button("X");
-        closeBtn.setOnAction(e -> closePopup());
-    
-        HBox header = new HBox(title, closeBtn);
+        title.getStyleClass().add("popup-title");
+
+        HBox header = new HBox(title);
         header.setAlignment(Pos.CENTER_LEFT);
     
         ComboBox<String> bookBox = new ComboBox<>();
@@ -654,7 +653,9 @@ public class MemorizationPage extends VBox {
         bookBox.setPromptText("Book");
     
         Spinner<Integer> chapterSpinner = new Spinner<>(1, 150, 1);
+        chapterSpinner.setEditable(true);
         Spinner<Integer> verseSpinner = new Spinner<>(1, 200, 1);
+        verseSpinner.setEditable(true);
     
         chapterSpinner.setPrefWidth(90);
         verseSpinner.setPrefWidth(90);
@@ -716,8 +717,17 @@ public class MemorizationPage extends VBox {
     
         appRoot.getChildren().addAll(popupOverlay, wrapper);
     
-        currentClosePopupHandler = () ->
+        currentClosePopupHandler = () -> {
             appRoot.getChildren().removeAll(popupOverlay, wrapper);
+            appRoot.setOnKeyPressed(null);
+        };
+
+        appRoot.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                closePopup();
+            }
+        });
+        appRoot.requestFocus();
     }
 
     private void closePopup() {
