@@ -14,6 +14,14 @@ import javafx.scene.layout.*;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextFlow;
 
+import java.util.Map;
+import java.util.HashMap;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
+
 public class MemorizationPage extends VBox {
 
     private static final String[] DIFFICULTY_LABELS = {
@@ -22,6 +30,56 @@ public class MemorizationPage extends VBox {
         "Every-other B",
         "Full-memory"
     };
+
+    private static final String[] BIBLE_BOOK_ORDER = {
+        "Genesis","Exodus","Leviticus","Numbers","Deuteronomy",
+        "Joshua","Judges","Ruth","1 Samuel","2 Samuel",
+        "1 Kings","2 Kings","1 Chronicles","2 Chronicles",
+        "Ezra","Nehemiah","Esther","Job","Psalms","Proverbs",
+        "Ecclesiastes","Song of Songs","Isaiah","Jeremiah",
+        "Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos",
+        "Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah",
+        "Haggai","Zechariah","Malachi","Matthew","Mark","Luke",
+        "John","Acts","Romans","1 Corinthians","2 Corinthians",
+        "Galatians","Ephesians","Philippians","Colossians",
+        "1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy",
+        "Titus","Philemon","Hebrews","James","1 Peter","2 Peter",
+        "1 John","2 John","3 John","Jude","Revelation"
+    };
+
+    private static final Map<String, Map<Integer, Integer>> BIBLE = new HashMap<>(); //start
+
+    static {
+        try {
+            InputStream is = MemorizationPage.class.getResourceAsStream("/com/bibleapp/BibleStructure.json");
+
+            if (is == null) {
+                throw new RuntimeException("BibleStructure.json NOT FOUND in resources");
+            }
+
+            JSONParser parser = new JSONParser();
+            JSONObject root = (JSONObject) parser.parse(new InputStreamReader(is));
+
+            for (Object bookKey : root.keySet()) {
+                String book = (String) bookKey;
+                JSONObject chapters = (JSONObject) root.get(book);
+
+                Map<Integer, Integer> chapterMap = new HashMap<>();
+
+                for (Object chapterKey : chapters.keySet()) {
+                    int chapter = Integer.parseInt((String) chapterKey);
+                    int verses = ((Long) chapters.get(chapterKey)).intValue();
+                    chapterMap.put(chapter, verses);
+                }
+            
+                BIBLE.put(book, chapterMap);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("Failed to load Bible structure", e);
+        }
+    }
 
     private final VBox leftScrollContent;
     private final StackPane appRoot;
@@ -532,139 +590,94 @@ public class MemorizationPage extends VBox {
         popupOverlay.getStyleClass().add("popup-overlay");
         popupOverlay.setOnMouseClicked(e -> closePopup());
     
-        VBox popupContainer = new VBox(8); // reduced spacing
+        VBox popupContainer = new VBox(8);
         popupContainer.getStyleClass().add("memorize-popup");
-        popupContainer.setPadding(new Insets(10)); // smaller padding
-        popupContainer.setMaxWidth(380); // smaller popup
+        popupContainer.setPadding(new Insets(10));
+        popupContainer.setMaxWidth(380);
         popupContainer.setMinWidth(320);
+        popupContainer.setMaxHeight(200);   // 👈 controls height
+        popupContainer.setPrefHeight(180);  // optional fine-tune
     
-        Label popupTitle = new Label("Add Verse");
-        popupTitle.getStyleClass().add("popup-title");
-    
+        Label title = new Label("Add Verse");
         Button closeBtn = new Button("X");
-        closeBtn.getStyleClass().add("popup-close-btn");
         closeBtn.setOnAction(e -> closePopup());
     
-        HBox header = new HBox();
+        HBox header = new HBox(title, closeBtn);
         header.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(popupTitle, Priority.ALWAYS);
-        header.getChildren().addAll(popupTitle, closeBtn);
     
-        // ---------------- BOOK ----------------
         ComboBox<String> bookBox = new ComboBox<>();
-        bookBox.getItems().addAll(
-            "Genesis","Exodus","Leviticus","Numbers","Deuteronomy",
-            "Joshua","Judges","Ruth","1 Samuel","2 Samuel",
-            "1 Kings","2 Kings","1 Chronicles","2 Chronicles",
-            "Ezra","Nehemiah","Esther","Job","Psalms","Proverbs",
-            "Ecclesiastes","Song of Solomon","Isaiah","Jeremiah",
-            "Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos",
-            "Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah",
-            "Haggai","Zechariah","Malachi","Matthew","Mark","Luke",
-            "John","Acts","Romans","1 Corinthians","2 Corinthians",
-            "Galatians","Ephesians","Philippians","Colossians",
-            "1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy",
-            "Titus","Philemon","Hebrews","James","1 Peter","2 Peter",
-            "1 John","2 John","3 John","Jude","Revelation"
-        );
+        for (String book : BIBLE_BOOK_ORDER) {
+            if (BIBLE.containsKey(book)) {
+                bookBox.getItems().add(book);
+            }
+        }
         bookBox.setPromptText("Book");
     
-        // ---------------- CHAPTER / VERSE ----------------
         Spinner<Integer> chapterSpinner = new Spinner<>(1, 150, 1);
         Spinner<Integer> verseSpinner = new Spinner<>(1, 200, 1);
     
         chapterSpinner.setPrefWidth(90);
         verseSpinner.setPrefWidth(90);
     
-        HBox row = new HBox(8,
-            new Label("Ch"), chapterSpinner,
-            new Label("V"), verseSpinner
-        );
+        Label error = new Label();
+        error.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
     
-        row.setAlignment(Pos.CENTER_LEFT);
-    
-        // ---------------- VALIDATION DATA (simplified real bounds) ----------------
-        java.util.Map<String, Integer> maxChapters = new java.util.HashMap<>();
-        maxChapters.put("Genesis", 50);
-        maxChapters.put("Exodus", 40);
-        maxChapters.put("Psalms", 150);
-        maxChapters.put("Matthew", 28);
-        maxChapters.put("John", 21);
-        maxChapters.put("Revelation", 22);
-        // (you can expand later)
-    
-        Label errorLabel = new Label();
-        errorLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
-    
-        // ---------------- SAVE ----------------
         Button saveBtn = new Button("Save");
-        saveBtn.getStyleClass().add("add-verse-btn");
-    
         saveBtn.setOnAction(e -> {
     
-            errorLabel.setText("");
+            error.setText("");
     
             String book = bookBox.getValue();
             int chapter = chapterSpinner.getValue();
             int verse = verseSpinner.getValue();
     
             if (book == null) {
-                errorLabel.setText("Select a book.");
+                error.setText("Select a book.");
                 return;
             }
     
-            int maxChapter = maxChapters.getOrDefault(book, 150);
+            Map<Integer, Integer> chapters = BIBLE.get(book);
     
-            if (chapter < 1 || chapter > maxChapter) {
-                errorLabel.setText(book + " has 1-" + maxChapter + " chapters.");
+            if (chapters == null || !chapters.containsKey(chapter)) {
+                error.setText("Invalid chapter for " + book);
                 return;
             }
     
-            if (verse < 1) {
-                errorLabel.setText("Verse must be at least 1.");
+            int maxVerse = chapters.get(chapter);
+    
+            if (verse < 1 || verse > maxVerse) {
+                error.setText("Chapter " + chapter + " has 1-" + maxVerse + " verses.");
                 return;
             }
     
-            // soft safety cap (since we don’t have per-chapter verse data)
-            if (verse > 200) {
-                errorLabel.setText("Verse number seems too high.");
-                return;
-            }
-    
-            MemorizedVerse newVerse =
+            MemorizedVerse verseObj =
                 new MemorizedVerse(book, chapter, verse, "", 0);
     
-            DataStore.addVerse(newVerse);
+            DataStore.addVerse(verseObj);
             loadVerseList();
             closePopup();
         });
     
-        // ---------------- LAYOUT (tightened) ----------------
         VBox content = new VBox(8,
             bookBox,
-            row,
-            errorLabel,
+            new HBox(8, new Label("Ch"), chapterSpinner,
+                          new Label("V"), verseSpinner),
+            error,
             saveBtn
         );
     
         popupContainer.getChildren().addAll(header, content);
     
-        StackPane popupWrapper = new StackPane(popupContainer);
-        popupWrapper.getStyleClass().add("popup-wrapper");
-        popupWrapper.setAlignment(Pos.CENTER);
+        StackPane wrapper = new StackPane(popupContainer);
+        wrapper.setAlignment(Pos.CENTER);
+
+        // prevents full-screen stretching
+        wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
     
-        popupContainer.setOnMouseClicked(e -> e.consume());
-    
-        appRoot.getChildren().addAll(popupOverlay, popupWrapper);
+        appRoot.getChildren().addAll(popupOverlay, wrapper);
     
         currentClosePopupHandler = () ->
-            appRoot.getChildren().removeAll(popupOverlay, popupWrapper);
-    
-        appRoot.setOnKeyPressed(e -> {
-            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) closePopup();
-        });
-    
-        appRoot.requestFocus();
+            appRoot.getChildren().removeAll(popupOverlay, wrapper);
     }
 
     private void closePopup() {
