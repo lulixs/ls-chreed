@@ -205,6 +205,8 @@
     -fx-background-color: #ffffff;
     -fx-border-color: #d0d7de;
     -fx-effect: null;
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
 }
 
 .combo-box .list-cell {
