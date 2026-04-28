@@ -24,14 +24,14 @@ import java.util.List;
  * JSON structure on first run
  * ───────────────────────────
  * {
- *   "schema_version":        1,
- *   "preferred_translation": "",
- *   "memorization_list":     [],
- *   "reading_plans":         [],
- *   "statistics": {
- *     "chapters_read":  0,
- *     "current_streak": 0
- *   }
+ * "schema_version": 1,
+ * "preferred_translation": "",
+ * "memorization_list": [],
+ * "reading_plans": [],
+ * "statistics": {
+ * "chapters_read": 0,
+ * "current_streak": 0
+ * }
  * }
  *
  * The "schema_version" field tags the layout of the file. When load() reads
@@ -42,12 +42,12 @@ import java.util.List;
  *
  * A populated memorization entry looks like:
  * {
- *   "id":         "John.3.16",
- *   "book":       "John",
- *   "chapter":    3,
- *   "verse":      16,
- *   "text":       "For God so loved the world…",
- *   "difficulty": 1
+ * "id": "John.3.16",
+ * "book": "John",
+ * "chapter": 3,
+ * "verse": 16,
+ * "text": "For God so loved the world…",
+ * "difficulty": 1
  * }
  *
  * The composite "id" field ("{book}.{chapter}.{verse}") uniquely identifies
@@ -55,44 +55,44 @@ import java.util.List;
  *
  * How to use from any page
  * ────────────────────────
- *   // Read
- *   String translation = DataStore.getPreferredTranslation();
- *   List<MemorizedVerse> verses = DataStore.getMemorizationList();
+ * // Read
+ * String translation = DataStore.getPreferredTranslation();
+ * List<MemorizedVerse> verses = DataStore.getMemorizationList();
  *
- *   // Write
- *   DataStore.setPreferredTranslation("ESV");
- *   DataStore.addVerse(new MemorizedVerse("John", 3, 16, "For God so loved…", 1));
- *   DataStore.updateVerseDifficulty("John.3.16", 2);
- *   DataStore.removeVerse("John.3.16");
+ * // Write
+ * DataStore.setPreferredTranslation("ESV");
+ * DataStore.addVerse(new MemorizedVerse("John", 3, 16, "For God so loved…",
+ * 1));
+ * DataStore.updateVerseDifficulty("John.3.16", 2);
+ * DataStore.removeVerse("John.3.16");
  */
 public class DataStore {
 
-    // ── File path ─────────────────────────────────────────────────────────────
+    // ── File path ──────────────────────────────────────────────────────────────
 
     private static final Path DATA_FILE = Paths.get(
-        System.getProperty("user.home"), "bible-app-data.json"
-    );
+            System.getProperty("user.home"), "bible-app-data.json");
 
-    // ── Schema version ────────────────────────────────────────────────────────
+    // ── Schema version ──────────────────────────────────────────────────────
 
     /** Layout version of the JSON file. Bump on any incompatible change. */
     private static final int CURRENT_SCHEMA_VERSION = 1;
 
-    // ── Top-level JSON keys ───────────────────────────────────────────────────
+    // ── Top-level JSON keys ─────────────────────────────────────────────────
 
     private static final String KEY_SCHEMA_VERSION = "schema_version";
-    private static final String KEY_TRANSLATION    = "preferred_translation";
-    private static final String KEY_MEMORIZATION   = "memorization_list";
-    private static final String KEY_READING_PLANS  = "reading_plans";
-    private static final String KEY_STATISTICS     = "statistics";
+    private static final String KEY_TRANSLATION = "preferred_translation";
+    private static final String KEY_MEMORIZATION = "memorization_list";
+    private static final String KEY_READING_PLANS = "reading_plans";
+    private static final String KEY_STATISTICS = "statistics";
 
-    // ── Memorization entry keys ───────────────────────────────────────────────
+    // ── Memorization entry keys ─────────────────────────────────────────────
 
-    private static final String KEY_VERSE_ID         = "id";
-    private static final String KEY_VERSE_BOOK       = "book";
-    private static final String KEY_VERSE_CHAPTER    = "chapter";
-    private static final String KEY_VERSE_NUMBER     = "verse";
-    private static final String KEY_VERSE_TEXT       = "text";
+    private static final String KEY_VERSE_ID = "id";
+    private static final String KEY_VERSE_BOOK = "book";
+    private static final String KEY_VERSE_CHAPTER = "chapter";
+    private static final String KEY_VERSE_NUMBER = "verse";
+    private static final String KEY_VERSE_TEXT = "text";
     private static final String KEY_VERSE_DIFFICULTY = "difficulty";
 
     // =========================================================================
@@ -118,8 +118,8 @@ public class DataStore {
             JSONObject data = (JSONObject) parser.parse(reader);
             if (!isCurrentSchema(data)) {
                 System.err.println(
-                    "DataStore: user data file at " + DATA_FILE
-                    + " is from an older schema and has been reset.");
+                        "DataStore: user data file at " + DATA_FILE
+                                + " is from an older schema and has been reset.");
                 JSONObject scaffold = emptyUserData();
                 save(scaffold);
                 return scaffold;
@@ -134,8 +134,10 @@ public class DataStore {
     /** True if the given JSON carries the current schema version tag. */
     private static boolean isCurrentSchema(JSONObject data) {
         Object v = data.get(KEY_SCHEMA_VERSION);
-        if (v instanceof Long l)    return l.intValue() == CURRENT_SCHEMA_VERSION;
-        if (v instanceof Integer i) return i == CURRENT_SCHEMA_VERSION;
+        if (v instanceof Long l)
+            return l.intValue() == CURRENT_SCHEMA_VERSION;
+        if (v instanceof Integer i)
+            return i == CURRENT_SCHEMA_VERSION;
         return false;
     }
 
@@ -188,12 +190,12 @@ public class DataStore {
         List<MemorizedVerse> result = new ArrayList<>();
         for (Object obj : arr) {
             if (obj instanceof JSONObject entry) {
-                String book  = getString(entry, KEY_VERSE_BOOK, "");
-                int chapter  = getInt(entry, KEY_VERSE_CHAPTER, 0);
+                String book = getString(entry, KEY_VERSE_BOOK, "");
+                int chapter = getInt(entry, KEY_VERSE_CHAPTER, 0);
                 int verseNum = getInt(entry, KEY_VERSE_NUMBER, 0);
-                String text  = getString(entry, KEY_VERSE_TEXT, "");
-                int diff     = getInt(entry, KEY_VERSE_DIFFICULTY,
-                                     MemorizedVerse.DIFFICULTY_COPY_DOWN);
+                String text = getString(entry, KEY_VERSE_TEXT, "");
+                int diff = getInt(entry, KEY_VERSE_DIFFICULTY,
+                        MemorizedVerse.DIFFICULTY_COPY_DOWN);
                 if (!book.isBlank() && chapter > 0 && verseNum > 0) {
                     result.add(new MemorizedVerse(book, chapter, verseNum, text, diff));
                 }
@@ -211,17 +213,15 @@ public class DataStore {
         JSONObject data = load();
         JSONArray arr = getOrCreateArray(data, KEY_MEMORIZATION);
 
-        arr.removeIf(obj ->
-            obj instanceof JSONObject entry &&
-            verse.getId().equalsIgnoreCase(getString(entry, KEY_VERSE_ID, ""))
-        );
+        arr.removeIf(obj -> obj instanceof JSONObject entry &&
+                verse.getId().equalsIgnoreCase(getString(entry, KEY_VERSE_ID, "")));
 
         JSONObject entry = new JSONObject();
-        entry.put(KEY_VERSE_ID,         verse.getId());
-        entry.put(KEY_VERSE_BOOK,       verse.getBook());
-        entry.put(KEY_VERSE_CHAPTER,    (long) verse.getChapter());
-        entry.put(KEY_VERSE_NUMBER,     (long) verse.getVerse());
-        entry.put(KEY_VERSE_TEXT,       verse.getText());
+        entry.put(KEY_VERSE_ID, verse.getId());
+        entry.put(KEY_VERSE_BOOK, verse.getBook());
+        entry.put(KEY_VERSE_CHAPTER, (long) verse.getChapter());
+        entry.put(KEY_VERSE_NUMBER, (long) verse.getVerse());
+        entry.put(KEY_VERSE_TEXT, verse.getText());
         entry.put(KEY_VERSE_DIFFICULTY, (long) verse.getNextDifficulty());
         arr.add(entry);
 
@@ -233,10 +233,8 @@ public class DataStore {
     public static void removeVerse(String id) {
         JSONObject data = load();
         JSONArray arr = getOrCreateArray(data, KEY_MEMORIZATION);
-        arr.removeIf(obj ->
-            obj instanceof JSONObject entry &&
-            id.equalsIgnoreCase(getString(entry, KEY_VERSE_ID, ""))
-        );
+        arr.removeIf(obj -> obj instanceof JSONObject entry &&
+                id.equalsIgnoreCase(getString(entry, KEY_VERSE_ID, "")));
         data.put(KEY_MEMORIZATION, arr);
         save(data);
     }
@@ -251,7 +249,7 @@ public class DataStore {
         JSONArray arr = getOrCreateArray(data, KEY_MEMORIZATION);
         for (Object obj : arr) {
             if (obj instanceof JSONObject entry &&
-                id.equalsIgnoreCase(getString(entry, KEY_VERSE_ID, ""))) {
+                    id.equalsIgnoreCase(getString(entry, KEY_VERSE_ID, ""))) {
                 entry.put(KEY_VERSE_DIFFICULTY, (long) difficulty);
                 break;
             }
@@ -269,12 +267,12 @@ public class DataStore {
     private static JSONObject emptyUserData() {
         JSONObject data = new JSONObject();
         data.put(KEY_SCHEMA_VERSION, (long) CURRENT_SCHEMA_VERSION);
-        data.put(KEY_TRANSLATION,    "");
-        data.put(KEY_MEMORIZATION,   new JSONArray());
-        data.put(KEY_READING_PLANS,  new JSONArray());
+        data.put(KEY_TRANSLATION, "");
+        data.put(KEY_MEMORIZATION, new JSONArray());
+        data.put(KEY_READING_PLANS, new JSONArray());
 
         JSONObject stats = new JSONObject();
-        stats.put("chapters_read",  0L);
+        stats.put("chapters_read", 0L);
         stats.put("current_streak", 0L);
         data.put(KEY_STATISTICS, stats);
 
@@ -284,7 +282,8 @@ public class DataStore {
     @SuppressWarnings("unchecked")
     private static JSONArray getOrCreateArray(JSONObject data, String key) {
         Object val = data.get(key);
-        if (val instanceof JSONArray arr) return arr;
+        if (val instanceof JSONArray arr)
+            return arr;
         JSONArray fresh = new JSONArray();
         data.put(key, fresh);
         return fresh;
@@ -297,8 +296,10 @@ public class DataStore {
 
     private static int getInt(JSONObject obj, String key, int fallback) {
         Object val = obj.get(key);
-        if (val instanceof Long l)    return l.intValue();
-        if (val instanceof Integer i) return i;
+        if (val instanceof Long l)
+            return l.intValue();
+        if (val instanceof Integer i)
+            return i;
         return fallback;
     }
 }

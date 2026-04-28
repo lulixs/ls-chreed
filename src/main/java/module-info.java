@@ -5,6 +5,7 @@ module com.bibleapp {
     requires java.net.http;
 
     opens com.bibleapp to javafx.fxml;
+
     exports com.bibleapp;
     exports com.bibleapp.pages;
     exports com.bibleapp.data;
