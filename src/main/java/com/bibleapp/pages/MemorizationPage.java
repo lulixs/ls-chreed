@@ -1,7 +1,18 @@
 package com.bibleapp.pages;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 import com.bibleapp.data.DataStore;
 import com.bibleapp.data.MemorizedVerse;
@@ -9,22 +20,19 @@ import com.bibleapp.difficulty.VerseDifficultyServer;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextFlow;
-
-import java.util.Map;
-import java.util.HashMap;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
 
 public class MemorizationPage extends VBox {
 
@@ -631,10 +639,9 @@ public class MemorizationPage extends VBox {
         popupContainer.setPrefHeight(180);  // optional fine-tune
     
         Label title = new Label("Add Verse");
-        Button closeBtn = new Button("X");
-        closeBtn.setOnAction(e -> closePopup());
-    
-        HBox header = new HBox(title, closeBtn);
+        title.getStyleClass().add("popup-title");
+
+        HBox header = new HBox(title);
         header.setAlignment(Pos.CENTER_LEFT);
     
         ComboBox<String> bookBox = new ComboBox<>();
@@ -646,7 +653,9 @@ public class MemorizationPage extends VBox {
         bookBox.setPromptText("Book");
     
         Spinner<Integer> chapterSpinner = new Spinner<>(1, 150, 1);
+        chapterSpinner.setEditable(true);
         Spinner<Integer> verseSpinner = new Spinner<>(1, 200, 1);
+        verseSpinner.setEditable(true);
     
         chapterSpinner.setPrefWidth(90);
         verseSpinner.setPrefWidth(90);
@@ -708,8 +717,17 @@ public class MemorizationPage extends VBox {
     
         appRoot.getChildren().addAll(popupOverlay, wrapper);
     
-        currentClosePopupHandler = () ->
+        currentClosePopupHandler = () -> {
             appRoot.getChildren().removeAll(popupOverlay, wrapper);
+            appRoot.setOnKeyPressed(null);
+        };
+
+        appRoot.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                closePopup();
+            }
+        });
+        appRoot.requestFocus();
     }
 
     private void closePopup() {
