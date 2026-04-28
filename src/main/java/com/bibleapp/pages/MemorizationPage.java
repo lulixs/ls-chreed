@@ -147,6 +147,7 @@ public class MemorizationPage extends VBox {
         leftColumn.getStyleClass().add("memorize-left-column");
         leftColumn.setPrefWidth(200);
         leftColumn.setMinWidth(150);
+        leftColumn.setMaxWidth(200);
 
         // Scrollable content for verse cards
         Label leftLabel = new Label("My Verses");
@@ -176,6 +177,8 @@ public class MemorizationPage extends VBox {
         rightColumn = new VBox(10);
         rightColumn.getStyleClass().add("memorize-right-column");
         rightColumn.setPadding(new Insets(10));
+        rightColumn.setMinWidth(0);
+        rightColumn.setMaxWidth(Double.MAX_VALUE);
 
         Label difficultyLabel = new Label("Select a difficulty to begin practice");
         difficultyLabel.getStyleClass().add("column-header");
@@ -184,6 +187,9 @@ public class MemorizationPage extends VBox {
 
         HBox.setHgrow(rightColumn, Priority.ALWAYS);
         HBox.setHgrow(leftColumn, Priority.NEVER);
+        rightColumn.prefWidthProperty().bind(columnsContainer.widthProperty()
+                .subtract(leftColumn.widthProperty())
+                .subtract(columnsContainer.spacingProperty()));
 
         columnsContainer.getChildren().addAll(leftColumn, rightColumn);
         VBox.setVgrow(columnsContainer, Priority.ALWAYS);
