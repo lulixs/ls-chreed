@@ -18,6 +18,10 @@ import java.util.Map;
 import java.util.HashMap;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
@@ -47,18 +51,17 @@ public class MemorizationPage extends VBox {
         "1 John","2 John","3 John","Jude","Revelation"
     };
 
-    private static final Map<String, Map<Integer, Integer>> BIBLE = new HashMap<>(); //start
+    private static final Map<String, Map<Integer, Integer>> BIBLE = loadBibleStructure();
 
-    static {
-        try {
-            InputStream is = MemorizationPage.class.getResourceAsStream("/com/bibleapp/BibleStructure.json");
-
+    private static Map<String, Map<Integer, Integer>> loadBibleStructure() {
+        try (InputStream is = openBibleStructureStream()) {
             if (is == null) {
-                throw new RuntimeException("BibleStructure.json NOT FOUND in resources");
+                throw new IOException("BibleStructure.json was not found on the classpath or in project resources.");
             }
 
             JSONParser parser = new JSONParser();
-            JSONObject root = (JSONObject) parser.parse(new InputStreamReader(is));
+            JSONObject root = (JSONObject) parser.parse(new InputStreamReader(is, StandardCharsets.UTF_8));
+            Map<String, Map<Integer, Integer>> bible = new HashMap<>();
 
             for (Object bookKey : root.keySet()) {
                 String book = (String) bookKey;
@@ -71,14 +74,43 @@ public class MemorizationPage extends VBox {
                     int verses = ((Long) chapters.get(chapterKey)).intValue();
                     chapterMap.put(chapter, verses);
                 }
-            
-                BIBLE.put(book, chapterMap);
+
+                bible.put(book, chapterMap);
             }
 
+            return bible;
         } catch (Exception e) {
-            e.printStackTrace();
-            throw new RuntimeException("Failed to load Bible structure", e);
+            throw new IllegalStateException("Failed to load Bible structure", e);
         }
+    }
+
+    private static InputStream openBibleStructureStream() throws IOException {
+        InputStream classResource = MemorizationPage.class.getResourceAsStream("/com/bibleapp/BibleStructure.json");
+        if (classResource != null) {
+            return classResource;
+        }
+
+        ClassLoader classLoader = MemorizationPage.class.getClassLoader();
+        if (classLoader != null) {
+            InputStream loaderResource = classLoader.getResourceAsStream("com/bibleapp/BibleStructure.json");
+            if (loaderResource != null) {
+                return loaderResource;
+            }
+        }
+
+        Path[] fallbackPaths = new Path[] {
+            Path.of("src", "main", "resources", "com", "bibleapp", "BibleStructure.json"),
+            Path.of("resources", "com", "bibleapp", "BibleStructure.json"),
+            Path.of("target", "classes", "com", "bibleapp", "BibleStructure.json")
+        };
+
+        for (Path path : fallbackPaths) {
+            if (Files.exists(path)) {
+                return Files.newInputStream(path);
+            }
+        }
+
+        return null;
     }
 
     private final VBox leftScrollContent;
