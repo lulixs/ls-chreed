@@ -527,111 +527,143 @@ public class MemorizationPage extends VBox {
     }
 
     private void showAddVersePopup() {
+
         StackPane popupOverlay = new StackPane();
         popupOverlay.getStyleClass().add("popup-overlay");
         popupOverlay.setOnMouseClicked(e -> closePopup());
-
-        VBox popupContainer = new VBox(10);
+    
+        VBox popupContainer = new VBox(8); // reduced spacing
         popupContainer.getStyleClass().add("memorize-popup");
-        popupContainer.setPadding(new Insets(16));
-        popupContainer.setMaxWidth(500);
-        popupContainer.setMinWidth(350);
-
+        popupContainer.setPadding(new Insets(10)); // smaller padding
+        popupContainer.setMaxWidth(380); // smaller popup
+        popupContainer.setMinWidth(320);
+    
         Label popupTitle = new Label("Add Verse");
         popupTitle.getStyleClass().add("popup-title");
-
+    
         Button closeBtn = new Button("X");
         closeBtn.getStyleClass().add("popup-close-btn");
         closeBtn.setOnAction(e -> closePopup());
-
+    
         HBox header = new HBox();
         header.setAlignment(Pos.CENTER_LEFT);
         HBox.setHgrow(popupTitle, Priority.ALWAYS);
         header.getChildren().addAll(popupTitle, closeBtn);
-
-        TextField bookField = new TextField();
-        bookField.setPromptText("Book (e.g. John)");
-
-        TextField chapterField = new TextField();
-        chapterField.setPromptText("Chapter (e.g. 3)");
-
-        TextField verseNumField = new TextField();
-        verseNumField.setPromptText("Verse (e.g. 16)");
-
-        HBox locationRow = new HBox(8, bookField, chapterField, verseNumField);
-        HBox.setHgrow(bookField, Priority.ALWAYS);
-        locationRow.setAlignment(Pos.CENTER_LEFT);
-
-        TextArea textArea = new TextArea();
-        textArea.setPromptText("Verse text…");
-        textArea.setWrapText(true);
-        textArea.setPrefRowCount(4);
-
-        ComboBox<String> diffBox = new ComboBox<>();
-        diffBox.getItems().addAll(DIFFICULTY_LABELS);
-        diffBox.getSelectionModel().selectFirst();
-        diffBox.setMaxWidth(Double.MAX_VALUE);
-
+    
+        // ---------------- BOOK ----------------
+        ComboBox<String> bookBox = new ComboBox<>();
+        bookBox.getItems().addAll(
+            "Genesis","Exodus","Leviticus","Numbers","Deuteronomy",
+            "Joshua","Judges","Ruth","1 Samuel","2 Samuel",
+            "1 Kings","2 Kings","1 Chronicles","2 Chronicles",
+            "Ezra","Nehemiah","Esther","Job","Psalms","Proverbs",
+            "Ecclesiastes","Song of Solomon","Isaiah","Jeremiah",
+            "Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos",
+            "Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah",
+            "Haggai","Zechariah","Malachi","Matthew","Mark","Luke",
+            "John","Acts","Romans","1 Corinthians","2 Corinthians",
+            "Galatians","Ephesians","Philippians","Colossians",
+            "1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy",
+            "Titus","Philemon","Hebrews","James","1 Peter","2 Peter",
+            "1 John","2 John","3 John","Jude","Revelation"
+        );
+        bookBox.setPromptText("Book");
+    
+        // ---------------- CHAPTER / VERSE ----------------
+        Spinner<Integer> chapterSpinner = new Spinner<>(1, 150, 1);
+        Spinner<Integer> verseSpinner = new Spinner<>(1, 200, 1);
+    
+        chapterSpinner.setPrefWidth(90);
+        verseSpinner.setPrefWidth(90);
+    
+        HBox row = new HBox(8,
+            new Label("Ch"), chapterSpinner,
+            new Label("V"), verseSpinner
+        );
+    
+        row.setAlignment(Pos.CENTER_LEFT);
+    
+        // ---------------- VALIDATION DATA (simplified real bounds) ----------------
+        java.util.Map<String, Integer> maxChapters = new java.util.HashMap<>();
+        maxChapters.put("Genesis", 50);
+        maxChapters.put("Exodus", 40);
+        maxChapters.put("Psalms", 150);
+        maxChapters.put("Matthew", 28);
+        maxChapters.put("John", 21);
+        maxChapters.put("Revelation", 22);
+        // (you can expand later)
+    
         Label errorLabel = new Label();
-        errorLabel.setStyle("-fx-text-fill: red;");
-
-        Button saveBtn = new Button("Save Verse");
+        errorLabel.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
+    
+        // ---------------- SAVE ----------------
+        Button saveBtn = new Button("Save");
         saveBtn.getStyleClass().add("add-verse-btn");
+    
         saveBtn.setOnAction(e -> {
+    
             errorLabel.setText("");
-
-            String book     = bookField.getText().trim();
-            String chapStr  = chapterField.getText().trim();
-            String verseStr = verseNumField.getText().trim();
-            String text     = textArea.getText().trim();
-
-            if (book.isEmpty() || chapStr.isEmpty() || verseStr.isEmpty() || text.isEmpty()) {
-                errorLabel.setText("Please fill in all fields.");
+    
+            String book = bookBox.getValue();
+            int chapter = chapterSpinner.getValue();
+            int verse = verseSpinner.getValue();
+    
+            if (book == null) {
+                errorLabel.setText("Select a book.");
                 return;
             }
-
-            int chapter, verseNum;
-            try {
-                chapter  = Integer.parseInt(chapStr);
-                verseNum = Integer.parseInt(verseStr);
-            } catch (NumberFormatException ex) {
-                errorLabel.setText("Chapter and verse must be numbers.");
+    
+            int maxChapter = maxChapters.getOrDefault(book, 150);
+    
+            if (chapter < 1 || chapter > maxChapter) {
+                errorLabel.setText(book + " has 1-" + maxChapter + " chapters.");
                 return;
             }
-
-            if (chapter <= 0 || verseNum <= 0) {
-                errorLabel.setText("Chapter and verse must be greater than 0.");
+    
+            if (verse < 1) {
+                errorLabel.setText("Verse must be at least 1.");
                 return;
             }
-
-            int difficulty = diffBox.getSelectionModel().getSelectedIndex() + 1;
-            MemorizedVerse newVerse = new MemorizedVerse(book, chapter, verseNum, text, difficulty);
+    
+            // soft safety cap (since we don’t have per-chapter verse data)
+            if (verse > 200) {
+                errorLabel.setText("Verse number seems too high.");
+                return;
+            }
+    
+            MemorizedVerse newVerse =
+                new MemorizedVerse(book, chapter, verse, "", 0);
+    
             DataStore.addVerse(newVerse);
             loadVerseList();
             closePopup();
         });
-
-        VBox popupContentArea = new VBox(10);
-        popupContentArea.getChildren().addAll(
-            new Label("Location:"), locationRow,
-            new Label("Verse text:"), textArea,
-            new Label("Difficulty:"), diffBox,
-            errorLabel, saveBtn
+    
+        // ---------------- LAYOUT (tightened) ----------------
+        VBox content = new VBox(8,
+            bookBox,
+            row,
+            errorLabel,
+            saveBtn
         );
-
-        popupContainer.getChildren().addAll(header, popupContentArea);
-
+    
+        popupContainer.getChildren().addAll(header, content);
+    
         StackPane popupWrapper = new StackPane(popupContainer);
         popupWrapper.getStyleClass().add("popup-wrapper");
         popupWrapper.setAlignment(Pos.CENTER);
+    
         popupContainer.setOnMouseClicked(e -> e.consume());
-
+    
         appRoot.getChildren().addAll(popupOverlay, popupWrapper);
+    
         currentClosePopupHandler = () ->
             appRoot.getChildren().removeAll(popupOverlay, popupWrapper);
+    
         appRoot.setOnKeyPressed(e -> {
             if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) closePopup();
         });
+    
         appRoot.requestFocus();
     }
 
