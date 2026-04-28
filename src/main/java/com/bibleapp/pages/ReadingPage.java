@@ -1,5 +1,7 @@
 package com.bibleapp.pages;
 
+import com.bibleapp.data.DataStore;
+import com.bibleapp.data.MemorizedVerse;
 import com.bibleapp.services.BibleApiClient;
 import com.bibleapp.services.BibleApiException;
 import com.bibleapp.services.BiblePassage;
@@ -9,11 +11,11 @@ import com.bibleapp.services.BibleTranslation;
 import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
-import javafx.util.StringConverter;
 import javafx.util.Duration;
 
 import java.util.ArrayList;
@@ -23,7 +25,8 @@ import java.util.Map;
 
 /**
  * Bible reading page with selectors for translation, book, and chapter.
- * Contains a text area for displaying scripture content.
+ * Verses are displayed as individual clickable rows — clicking a verse
+ * adds it to the memorization list.
  */
 public class ReadingPage extends VBox {
 
@@ -86,7 +89,10 @@ public class ReadingPage extends VBox {
     private final ComboBox<BibleTranslation> translationCombo;
     private final ComboBox<String> bookCombo;
     private final Spinner<Integer> chapterSpinner;
-    private final TextArea chapterDisplay;
+
+    // Verse rows are rendered here instead of a plain TextArea so they can be clicked
+    private final VBox verseListContainer;
+
     private final BibleApiClient apiClient = new BibleApiClient();
     private final List<BibleTranslation> allTranslations = new ArrayList<>();
     private final PauseTransition fetchPause = new PauseTransition(Duration.millis(300));
@@ -136,36 +142,8 @@ public class ReadingPage extends VBox {
         SpinnerValueFactory.IntegerSpinnerValueFactory spinnerFactory =
                 new SpinnerValueFactory.IntegerSpinnerValueFactory(1, 150, 1);
         chapterSpinner = new Spinner<>(spinnerFactory);
-        chapterSpinner.setEditable(true);
         chapterSpinner.setPrefWidth(70);
         chapterSpinner.getStyleClass().add("chapter-spinner");
-        spinnerFactory.setConverter(new StringConverter<>() {
-            @Override
-            public String toString(Integer value) {
-                return value == null ? "" : value.toString();
-            }
-
-            @Override
-            public Integer fromString(String text) {
-                if (text == null || text.isBlank()) {
-                    return spinnerFactory.getValue();
-                }
-
-                try {
-                    int parsed = Integer.parseInt(text.trim());
-                    return Math.max(spinnerFactory.getMin(), Math.min(spinnerFactory.getMax(), parsed));
-                } catch (NumberFormatException ex) {
-                    return spinnerFactory.getValue();
-                }
-            }
-        });
-
-        chapterSpinner.getEditor().setOnAction(event -> commitChapterEditorText(spinnerFactory));
-        chapterSpinner.focusedProperty().addListener((obs, wasFocused, isFocused) -> {
-            if (!isFocused) {
-                commitChapterEditorText(spinnerFactory);
-            }
-        });
 
         // When the user picks a book, cap the spinner to that book's chapter count.
         // If the current chapter is now out of range, drop it down to the new max.
@@ -180,29 +158,31 @@ public class ReadingPage extends VBox {
 
         selectorRow.getChildren().addAll(translationCombo, bookCombo, chapterSpinner);
 
-        // Text area for scripture display
-        chapterDisplay = new TextArea();
-        chapterDisplay.setEditable(false);
-        chapterDisplay.setWrapText(true);
-        chapterDisplay.setPrefRowCount(20);
-        chapterDisplay.getStyleClass().add("chapter-display");
+        // Hint label so users know they can click verses
+        Label hint = new Label("Click a verse to add it to your memorization list.");
+        hint.getStyleClass().add("verse-hint-label");
 
-        VBox displayContainer = new VBox(chapterDisplay);
-        VBox.setVgrow(displayContainer, Priority.ALWAYS);
-        displayContainer.setFillWidth(true);
+        // Each verse gets its own row inside this container
+        verseListContainer = new VBox(4);
+        verseListContainer.getStyleClass().add("verse-list-container");
 
-        getChildren().addAll(title, selectorRow, displayContainer);
+        ScrollPane scrollPane = new ScrollPane(verseListContainer);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.getStyleClass().add("chapter-display");
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        getChildren().addAll(title, selectorRow, hint, scrollPane);
 
         configureTranslationSearch();
         setTranslations(FALLBACK_TRANSLATIONS);
-        bookCombo.getSelectionModel().select("Genesis");
-        fetchPause.setOnFinished(event -> fetchAndPrintNow());
+        fetchPause.setOnFinished(event -> fetchAndDisplayVerses());
 
         translationCombo.valueProperty().addListener((obs, oldV, newV) -> scheduleFetch());
         bookCombo.valueProperty().addListener((obs, oldV, newV) -> scheduleFetch());
         chapterSpinner.valueProperty().addListener((obs, oldV, newV) -> scheduleFetch());
 
-        scheduleFetch();
         loadTranslations();
     }
 
@@ -210,53 +190,140 @@ public class ReadingPage extends VBox {
         fetchPause.playFromStart();
     }
 
-    private void commitChapterEditorText(SpinnerValueFactory.IntegerSpinnerValueFactory spinnerFactory) {
-        String text = chapterSpinner.getEditor().getText();
-        Integer value = spinnerFactory.getConverter().fromString(text);
-        spinnerFactory.setValue(value);
-    }
-
-    private void fetchAndPrintNow() {
+    /**
+     * Fetches the selected chapter from the API and renders each verse
+     * as a clickable row in the verse list.
+     */
+    private void fetchAndDisplayVerses() {
         BibleTranslation translation = translationCombo.getValue();
         String book = bookCombo.getValue();
         Integer chapter = chapterSpinner.getValue();
-        if (translation == null || book == null || chapter == null) {
-            return;
-        }
+        if (translation == null || book == null || chapter == null) return;
 
         if (!TRANSLATION_ORDER.contains(translation.identifier())) {
-            chapterDisplay.setText("That translation is no longer available. Please choose one of the supported translations.");
+            showMessage("That translation is no longer available. Please choose a supported translation.");
             return;
         }
 
         String reference = book + " " + chapter;
         long requestId = ++fetchRequestId;
-        chapterDisplay.setText("Loading " + reference + " in " + translation.displayLabel() + "...");
+        showMessage("Loading " + reference + " in " + translation.displayLabel() + "...");
 
         Thread t = new Thread(() -> {
             try {
                 BiblePassage passage = apiClient.getPassage(reference, translation.identifier());
-                if (requestId != fetchRequestId) {
-                    return;
-                }
+                if (requestId != fetchRequestId) return;
+
                 Platform.runLater(() -> {
-                    if (requestId == fetchRequestId) {
-                        chapterDisplay.setText(buildDisplayText(passage));
-                    }
+                    if (requestId != fetchRequestId) return;
+                    renderVerses(passage, book, chapter);
                 });
             } catch (BibleApiException e) {
-                if (requestId != fetchRequestId) {
-                    return;
-                }
+                if (requestId != fetchRequestId) return;
                 Platform.runLater(() -> {
-                    if (requestId == fetchRequestId) {
-                        chapterDisplay.setText(buildErrorText(e));
-                    }
+                    if (requestId != fetchRequestId) return;
+                    showMessage(buildErrorText(e));
                 });
             }
         }, "bible-api-fetch");
         t.setDaemon(true);
         t.start();
+    }
+
+    /**
+     * Clears the verse list and builds one clickable row per verse.
+     * If the passage has no individual verse objects, falls back to
+     * showing the raw passage text as a single unclickable block.
+     */
+    private void renderVerses(BiblePassage passage, String book, int chapter) {
+        verseListContainer.getChildren().clear();
+
+        // Header row: reference + translation name
+        String header = passage.getReference();
+        if (passage.getTranslationName() != null && !passage.getTranslationName().isBlank()) {
+            header += " — " + passage.getTranslationName();
+        }
+        Label headerLabel = new Label(header);
+        headerLabel.getStyleClass().add("verse-chapter-header");
+        headerLabel.setWrapText(true);
+        verseListContainer.getChildren().add(headerLabel);
+
+        if (passage.getVerses().isEmpty()) {
+            // API returned a text blob with no individual verses — show it as plain text
+            Label fallback = new Label(passage.getText() == null ? "" : passage.getText().trim());
+            fallback.setWrapText(true);
+            fallback.getStyleClass().add("verse-row-text");
+            verseListContainer.getChildren().add(fallback);
+            return;
+        }
+
+        // Build one clickable row for every verse in the chapter
+        for (BibleVerse verse : passage.getVerses()) {
+            verseListContainer.getChildren().add(buildVerseRow(verse, book, chapter));
+        }
+    }
+
+    /**
+     * Builds a single verse row. Clicking it saves the verse to the
+     * memorization list and briefly highlights the row as confirmation.
+     */
+    private HBox buildVerseRow(BibleVerse verse, String book, int chapter) {
+        // Verse number badge on the left
+        Label numberLabel = new Label(String.valueOf(verse.getVerse()));
+        numberLabel.getStyleClass().add("verse-number-label");
+        numberLabel.setMinWidth(30);
+        numberLabel.setAlignment(Pos.TOP_RIGHT);
+
+        // Verse text on the right
+        Label textLabel = new Label(verse.getText() == null ? "" : verse.getText().trim());
+        textLabel.setWrapText(true);
+        textLabel.getStyleClass().add("verse-row-text");
+        HBox.setHgrow(textLabel, Priority.ALWAYS);
+
+        HBox row = new HBox(8, numberLabel, textLabel);
+        row.setPadding(new Insets(6, 8, 6, 8));
+        row.getStyleClass().add("verse-row");
+        row.setAlignment(Pos.TOP_LEFT);
+
+        // Clicking a verse row adds it to the memorization list
+        row.setOnMouseClicked(e -> addVerseToMemorization(verse, book, chapter, row));
+
+        return row;
+    }
+
+    /**
+     * Saves the clicked verse to the memorization list via DataStore.
+     * Skips duplicates (DataStore deduplicates by book.chapter.verse ID).
+     * Applies a brief CSS highlight so the user gets visual feedback.
+     */
+    private void addVerseToMemorization(BibleVerse verse, String book, int chapter, HBox row) {
+        MemorizedVerse memorizedVerse = new MemorizedVerse(
+                book,
+                chapter,
+                verse.getVerse(),
+                verse.getText() == null ? "" : verse.getText().trim(),
+                MemorizedVerse.DIFFICULTY_COPY_DOWN  // default difficulty; user can change it later
+        );
+
+        DataStore.addVerse(memorizedVerse);
+
+        // Flash the row green so the user knows it was added
+        row.getStyleClass().add("verse-row-added");
+        PauseTransition highlight = new PauseTransition(Duration.millis(1200));
+        highlight.setOnFinished(e -> row.getStyleClass().remove("verse-row-added"));
+        highlight.play();
+    }
+
+    /**
+     * Replaces the verse list with a single status/error message.
+     * Used while loading or when something goes wrong.
+     */
+    private void showMessage(String message) {
+        verseListContainer.getChildren().clear();
+        Label label = new Label(message);
+        label.setWrapText(true);
+        label.getStyleClass().add("verse-row-text");
+        verseListContainer.getChildren().add(label);
     }
 
     private void loadTranslations() {
@@ -265,7 +332,7 @@ public class ReadingPage extends VBox {
                 List<BibleTranslation> translations = apiClient.getTranslationsSupportingBooks(BOOKS);
                 Platform.runLater(() -> setTranslations(translations.isEmpty() ? FALLBACK_TRANSLATIONS : translations));
             } catch (BibleApiException e) {
-                Platform.runLater(() -> chapterDisplay.setText(
+                Platform.runLater(() -> showMessage(
                         "Using built-in translation list because live translation metadata could not be loaded.\n\n"
                                 + e.getMessage()
                 ));
@@ -279,23 +346,16 @@ public class ReadingPage extends VBox {
         translationSearchPause.setOnFinished(event -> translationSearchBuffer.setLength(0));
 
         translationCombo.valueProperty().addListener((obs, oldValue, newValue) -> {
-            if (newValue == null) {
-                return;
-            }
-            selectedTranslationId = newValue.identifier();
+            if (newValue != null) selectedTranslationId = newValue.identifier();
         });
 
         translationCombo.addEventFilter(KeyEvent.KEY_TYPED, event -> {
             String character = event.getCharacter();
-            if (character == null || character.isBlank() || Character.isISOControl(character.charAt(0))) {
-                return;
-            }
+            if (character == null || character.isBlank() || Character.isISOControl(character.charAt(0))) return;
 
             translationSearchBuffer.append(character.toLowerCase());
             translationSearchPause.playFromStart();
-
-            findTranslation(translationSearchBuffer.toString())
-                    .ifPresent(translationCombo::setValue);
+            findTranslation(translationSearchBuffer.toString()).ifPresent(translationCombo::setValue);
             event.consume();
         });
     }
@@ -303,64 +363,32 @@ public class ReadingPage extends VBox {
     private void setTranslations(List<BibleTranslation> translations) {
         allTranslations.clear();
         allTranslations.addAll(translations.stream()
-                .filter(translation -> translation.identifier() != null && TRANSLATION_ORDER.contains(translation.identifier()))
+                .filter(t -> t.identifier() != null && TRANSLATION_ORDER.contains(t.identifier()))
                 .toList());
-        allTranslations.sort((left, right) -> Integer.compare(orderIndex(left), orderIndex(right)));
+        allTranslations.sort((a, b) -> Integer.compare(orderIndex(a), orderIndex(b)));
         translationCombo.setItems(FXCollections.observableArrayList(allTranslations));
         if (!allTranslations.isEmpty()) {
-            BibleTranslation savedSelection = findTranslation(selectedTranslationId).orElse(allTranslations.get(0));
-            translationCombo.setValue(savedSelection);
+            BibleTranslation saved = findTranslation(selectedTranslationId).orElse(allTranslations.get(0));
+            translationCombo.setValue(saved);
         }
     }
 
     private Optional<BibleTranslation> findTranslation(String text) {
-        if (text == null || text.isBlank()) {
-            return Optional.empty();
-        }
-
+        if (text == null || text.isBlank()) return Optional.empty();
         String normalized = text.trim();
         return allTranslations.stream()
-                .filter(translation ->
-                        translation.displayLabel().equalsIgnoreCase(normalized)
-                                || (translation.name() != null && translation.name().equalsIgnoreCase(normalized))
-                                || (translation.identifier() != null && translation.identifier().equalsIgnoreCase(normalized)))
+                .filter(t -> t.displayLabel().equalsIgnoreCase(normalized)
+                        || (t.name() != null && t.name().equalsIgnoreCase(normalized))
+                        || (t.identifier() != null && t.identifier().equalsIgnoreCase(normalized)))
                 .findFirst()
                 .or(() -> allTranslations.stream()
-                        .filter(translation -> startsWithIgnoreCase(translation.displayLabel(), normalized)
-                                || startsWithIgnoreCase(translation.name(), normalized)
-                                || startsWithIgnoreCase(translation.identifier(), normalized))
+                        .filter(t -> startsWithIgnoreCase(t.displayLabel(), normalized)
+                                || startsWithIgnoreCase(t.name(), normalized)
+                                || startsWithIgnoreCase(t.identifier(), normalized))
                         .findFirst())
                 .or(() -> allTranslations.stream()
-                        .filter(translation -> translation.matchesQuery(normalized))
+                        .filter(t -> t.matchesQuery(normalized))
                         .findFirst());
-    }
-
-    private String buildDisplayText(BiblePassage passage) {
-        StringBuilder builder = new StringBuilder();
-        builder.append(passage.getReference());
-
-        if (passage.getTranslationName() != null && !passage.getTranslationName().isBlank()) {
-            builder.append(" - ").append(passage.getTranslationName());
-        } else if (passage.getTranslationId() != null && !passage.getTranslationId().isBlank()) {
-            builder.append(" - ").append(passage.getTranslationId().toUpperCase());
-        }
-
-        builder.append("\n\n");
-        if (passage.getVerses().isEmpty()) {
-            builder.append(passage.getText() == null ? "" : passage.getText().trim());
-        } else {
-            for (BibleVerse verse : passage.getVerses()) {
-                builder.append(verse.getVerse())
-                       .append(" ")
-                       .append(verse.getText() == null ? "" : verse.getText().trim())
-                       .append("\n");
-            }
-            // Trim the trailing newline so the text area does not end with extra blank line.
-            if (builder.length() > 0 && builder.charAt(builder.length() - 1) == '\n') {
-                builder.setLength(builder.length() - 1);
-            }
-        }
-        return builder.toString();
     }
 
     private String buildErrorText(BibleApiException error) {
