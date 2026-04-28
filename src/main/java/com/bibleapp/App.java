@@ -24,7 +24,7 @@ public class App extends StackPane {
     private StackPane userIcon;
     private Runnable currentClosePopupHandler;
 
-    private static final String[] TABS = {"Stats", "Read", "Plans", "Memorize"};
+    private static final String[] TABS = { "Stats", "Read", "Plans", "Memorize" };
 
     public App() {
         getStyleClass().add("app");
@@ -156,16 +156,18 @@ public class App extends StackPane {
     }
 
     private void closePopup() {
-        getChildren().removeIf(node ->
-            node.getStyleClass().contains("popup-overlay") ||
-            node.getStyleClass().contains("popup-wrapper")
-        );
+        getChildren().removeIf(node -> node.getStyleClass().contains("popup-overlay") ||
+                node.getStyleClass().contains("popup-wrapper"));
         currentClosePopupHandler = null;
     }
 
     private void showPage(String name) {
         switch (name) {
-            case "Read" -> contentArea.setCenter(readingPage);
+            case "Read" -> {
+                contentArea.setCenter(readingPage);
+                // Refresh visual state in case memorization list changed on another page
+                readingPage.refreshDisplay();
+            }
             case "Plans" -> contentArea.setCenter(new ReadingPlansPage());
             case "Stats" -> contentArea.setCenter(new StatisticsPage());
             case "Memorize" -> contentArea.setCenter(new MemorizationPage(this));
@@ -177,7 +179,8 @@ public class App extends StackPane {
             Label btn = (Label) sidebar.lookup("#nav-" + i);
             if (btn != null) {
                 btn.getStyleClass().remove("nav-btn--active");
-                if (i == activeIndex) btn.getStyleClass().add("nav-btn--active");
+                if (i == activeIndex)
+                    btn.getStyleClass().add("nav-btn--active");
             }
         }
     }
