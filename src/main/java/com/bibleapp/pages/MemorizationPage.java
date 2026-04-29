@@ -1,7 +1,24 @@
 package com.bibleapp.pages;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URLEncoder;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 import com.bibleapp.badges.Badge;
 import com.bibleapp.badges.BadgeService;
@@ -14,24 +31,30 @@ import com.bibleapp.services.BiblePassage;
 
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.*;
-import javafx.scene.layout.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.Spinner;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.StackPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.TextFlow;
 
-import java.util.Map;
-import java.util.HashMap;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-
-import org.json.simple.JSONObject;
-import org.json.simple.parser.JSONParser;
-
 public class MemorizationPage extends VBox {
+
+    private static final String WORD_STYLE_BASE =
+        "-fx-font-size: 16px; -fx-font-family: \"Consolas\", \"Courier New\", monospace; -fx-padding: 1 3 1 3; -fx-background-radius: 3px;";
+    private static final String WORD_STYLE_DEFAULT =
+        WORD_STYLE_BASE + "-fx-text-fill: #333333; -fx-background-color: transparent;";
+    private static final String WORD_STYLE_PAST =
+        WORD_STYLE_BASE + "-fx-text-fill: #888888; -fx-background-color: transparent;";
+    private static final String WORD_STYLE_ACTIVE =
+        WORD_STYLE_BASE + "-fx-font-weight: bold; -fx-text-fill: #000000; -fx-background-color: #FFF3CD;";
 
     private static final String[] DIFFICULTY_LABELS = {
         "Copy-down",
@@ -152,6 +175,7 @@ public class MemorizationPage extends VBox {
         leftColumn.getStyleClass().add("memorize-left-column");
         leftColumn.setPrefWidth(200);
         leftColumn.setMinWidth(150);
+        leftColumn.setMaxWidth(200);
 
         // Scrollable content for verse cards
         Label leftLabel = new Label("My Verses");
@@ -181,6 +205,8 @@ public class MemorizationPage extends VBox {
         rightColumn = new VBox(10);
         rightColumn.getStyleClass().add("memorize-right-column");
         rightColumn.setPadding(new Insets(10));
+        rightColumn.setMinWidth(0);
+        rightColumn.setMaxWidth(Double.MAX_VALUE);
 
         Label difficultyLabel = new Label("Select a difficulty to begin practice");
         difficultyLabel.getStyleClass().add("column-header");
@@ -189,6 +215,9 @@ public class MemorizationPage extends VBox {
 
         HBox.setHgrow(rightColumn, Priority.ALWAYS);
         HBox.setHgrow(leftColumn, Priority.NEVER);
+        rightColumn.prefWidthProperty().bind(columnsContainer.widthProperty()
+                .subtract(leftColumn.widthProperty())
+                .subtract(columnsContainer.spacingProperty()));
 
         columnsContainer.getChildren().addAll(leftColumn, rightColumn);
         VBox.setVgrow(columnsContainer, Priority.ALWAYS);
@@ -261,8 +290,7 @@ public class MemorizationPage extends VBox {
         selectorBar.getStyleClass().add("diff-selector-bar");
         HBox.setHgrow(selectorBar, Priority.ALWAYS);
 
-        // Sets selected verse and difficulty
-        currentVerse = getSelectedVerse();
+        // Sets difficulty for the currently selected verse
         difficulty.setDifficulty(currentVerse, currentDifficulty);
 
         // Button used to start a memorization task
@@ -334,10 +362,15 @@ public class MemorizationPage extends VBox {
         // Resets right column
         rightColumn.getChildren().clear();
 
-        // Sets selected verse and difficulty
-        currentVerse = getSelectedVerse();
+        // Guard: do nothing if no verse is selected
+        if (currentVerse == null) {
+            showDifficultySelector();
+            return;
+        }
+
+        // Sets difficulty for the currently selected verse
         difficulty.setDifficulty(currentVerse, currentDifficulty);
-        
+
         // Adds a back button to return to difficulty selector
         Button backBtn = new Button("\u2190 Back");
         backBtn.getStyleClass().add("back-btn");
@@ -350,31 +383,28 @@ public class MemorizationPage extends VBox {
         wordLabels.clear();
         currentWordIndex = 0;
 
-        // TextFlow displays verse
+        String[] words = difficulty.getDisplayVerse();
+
         TextFlow verseFlow = new TextFlow();
         verseFlow.setLineSpacing(6);
         verseFlow.getStyleClass().add("verse-text-flow");
-
-        String[] words = difficulty.getDisplayVerse();
         for (int i = 0; i < words.length; i++) {
-
-            // Adds word to verse display
             Label wordLabel = new Label(words[i]);
-            wordLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #333333;");
+            wordLabel.setStyle(WORD_STYLE_DEFAULT);
             wordLabels.add(wordLabel);
+
             verseFlow.getChildren().add(wordLabel);
 
-            // Add a space between words
             if (i < words.length - 1) {
                 Label space = new Label(" ");
                 space.setStyle("-fx-font-size: 16px;");
                 verseFlow.getChildren().add(space);
             }
-        }   
+        }
 
         wordCorrect = new boolean[words.length];
 
-        // Input field (Purely to listen for input, nothing will be dispalyed)
+        // Input field (Purely to listen for input, nothing will be displayed)
         TextField inputField = new TextField();
         inputField.getStyleClass().add("verse-input");
         inputField.setPromptText("Type the first letter of each word...");
@@ -404,11 +434,11 @@ public class MemorizationPage extends VBox {
         for (int i = 0; i < wordLabels.size(); i++) {
             Label lbl = wordLabels.get(i);
             if (i < index) {
-                lbl.setStyle("-fx-font-size: 16px; -fx-text-fill: #888888;");
+                lbl.setStyle(WORD_STYLE_PAST);
             } else if (i == index) {
-                lbl.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #000000; -fx-background-color: #FFF3CD; -fx-background-radius: 3px; -fx-padding: 1 3 1 3;");
+                lbl.setStyle(WORD_STYLE_ACTIVE);
             } else {
-                lbl.setStyle("-fx-font-size: 16px; -fx-text-fill: #333333;");
+                lbl.setStyle(WORD_STYLE_DEFAULT);
             }
         }
     }
@@ -480,10 +510,9 @@ public class MemorizationPage extends VBox {
 
             // If correct, the word will be green, otherwise orange
             String color = wordCorrect[i] ? "#1D9E75" : "#D85A30";
-            wordLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
+            wordLabel.setStyle(WORD_STYLE_BASE + "-fx-font-weight: bold; -fx-text-fill: " + color + "; -fx-background-color: transparent;");
             verseReview.getChildren().add(wordLabel);
 
-            // Adds spaces in between words
             if (i < key.length - 1) {
                 Label space = new Label(" ");
                 space.setStyle("-fx-font-size: 16px;");
@@ -571,8 +600,82 @@ public class MemorizationPage extends VBox {
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
+        Region spacerBottom = new Region();
+        VBox.setVgrow(spacerBottom, Priority.ALWAYS);
 
-        rightColumn.getChildren().addAll(spacer, buildDifficultySelector());
+        // If no verse is selected, show a placeholder prompt
+        if (currentVerse == null) {
+            Label placeholder = new Label("Select a verse to begin.");
+            placeholder.setStyle("-fx-font-size: 16px; -fx-text-fill: #888888;");
+            placeholder.setAlignment(Pos.CENTER);
+            placeholder.setMaxWidth(Double.MAX_VALUE);
+            rightColumn.getChildren().addAll(spacer, placeholder, spacerBottom);
+            return;
+        }
+
+        // If the verse text is missing (e.g. saved before API fetch was fixed),
+        // fetch it now on a background thread then refresh.
+        String verseText = currentVerse.getText();
+        if (verseText == null || verseText.trim().isEmpty()) {
+            Label loadingLabel = new Label("Loading verse text...");
+            loadingLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #888888;");
+            loadingLabel.setAlignment(Pos.CENTER);
+            loadingLabel.setMaxWidth(Double.MAX_VALUE);
+            rightColumn.getChildren().addAll(spacer, loadingLabel, spacerBottom);
+
+            // Parse book/chapter/verse back out of the reference string (e.g. "John 3:16")
+            String ref = currentVerse.getReference(); // e.g. "John 3:16" or "1 Samuel 2:3"
+            String fetchedBook = ref.contains(" ") ? ref.substring(0, ref.lastIndexOf(' ')) : ref;
+            String chapterVerse = ref.contains(" ") ? ref.substring(ref.lastIndexOf(' ') + 1) : "1:1";
+            int fetchedChapter = 1, fetchedVerse = 1;
+            try {
+                String[] parts = chapterVerse.split(":");
+                fetchedChapter = Integer.parseInt(parts[0].trim());
+                fetchedVerse = Integer.parseInt(parts[1].trim());
+            } catch (Exception ignored) {}
+            final String fb = fetchedBook;
+            final int fc = fetchedChapter, fv = fetchedVerse;
+
+            Thread fetchThread = new Thread(() -> {
+                String fetched = fetchVerseTextFromApi(fb, fc, fv);
+                javafx.application.Platform.runLater(() -> {
+                    if (fetched != null && !fetched.trim().isEmpty()) {
+                        // Replace the verse in DataStore with one that has the fetched text
+                        int savedDifficulty = currentVerse.getNextDifficulty();
+                        DataStore.removeVerse(currentVerse.getId());
+                        MemorizedVerse updated = new MemorizedVerse(fb, fc, fv, fetched, savedDifficulty);
+                        DataStore.addVerse(updated);
+                        // Re-select the newly saved verse
+                        List<MemorizedVerse> all = DataStore.getMemorizationList();
+                        currentVerse = all.isEmpty() ? null : all.get(all.size() - 1);
+                        loadVerseList();
+                        showDifficultySelector(); // retry now that text is loaded
+                    } else {
+                        rightColumn.getChildren().clear();
+                        Label errLabel = new Label("Could not load verse text. Check your connection.");
+                        errLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: #D85A30;");
+                        errLabel.setAlignment(Pos.CENTER);
+                        errLabel.setMaxWidth(Double.MAX_VALUE);
+                        errLabel.setWrapText(true);
+                        Region s = new Region(); VBox.setVgrow(s, Priority.ALWAYS);
+                        Region sb = new Region(); VBox.setVgrow(sb, Priority.ALWAYS);
+                        rightColumn.getChildren().addAll(s, errLabel, sb);
+                    }
+                });
+            });
+            fetchThread.setDaemon(true);
+            fetchThread.start();
+            return;
+        }
+
+        // Show the selected verse reference in large text above the difficulty selector
+        Label verseRefLabel = new Label(currentVerse.getReference());
+        verseRefLabel.setStyle("-fx-font-size: 28px; -fx-font-weight: bold; -fx-text-fill: #333333;");
+        verseRefLabel.setAlignment(Pos.CENTER);
+        verseRefLabel.setMaxWidth(Double.MAX_VALUE);
+        verseRefLabel.setWrapText(true);
+
+        rightColumn.getChildren().addAll(spacer, verseRefLabel, buildDifficultySelector());
     }
 
     private void cycleLeft() {
@@ -645,6 +748,7 @@ public class MemorizationPage extends VBox {
         Label refLabel = new Label(verse.getReference());
         refLabel.getStyleClass().add("verse-card-reference");
         refLabel.setWrapText(true);
+        refLabel.setMaxWidth(Double.MAX_VALUE);
 
         String preview = verse.getText();
         if (preview != null && preview.length() > 60) {
@@ -653,6 +757,7 @@ public class MemorizationPage extends VBox {
         Label previewLabel = new Label(preview);
         previewLabel.getStyleClass().add("verse-card-preview");
         previewLabel.setWrapText(true);
+        previewLabel.setMaxWidth(Double.MAX_VALUE);
 
         ComboBox<String> diffBox = new ComboBox<>();
         diffBox.getItems().addAll(DIFFICULTY_LABELS);
@@ -666,6 +771,19 @@ public class MemorizationPage extends VBox {
         // Don't let interacting with the dropdown also "select" the card.
         diffBox.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_CLICKED, javafx.event.Event::consume);
 
+        // Explicit Practice button — avoids all JavaFX event-bubbling issues
+        // with ComboBox/Button consuming mouse clicks on the card container.
+        Button practiceBtn = new Button("Practice");
+        practiceBtn.getStyleClass().add("add-verse-btn");
+        practiceBtn.setMaxWidth(Double.MAX_VALUE);
+        practiceBtn.setOnAction(e -> {
+            currentVerse = verse;
+            currentDifficulty = Math.min(currentDifficulty, Math.max(0, verse.getNextDifficulty()));
+            showDifficultySelector();
+            leftScrollContent.getChildren().forEach(node -> node.getStyleClass().remove("verse-card-selected"));
+            card.getStyleClass().add("verse-card-selected");
+        });
+
         Button removeBtn = new Button("Remove");
         removeBtn.getStyleClass().add("remove-verse-btn");
         removeBtn.setOnAction(e -> {
@@ -675,10 +793,11 @@ public class MemorizationPage extends VBox {
                 showDifficultySelector();
             }
             loadVerseList();
+            showDifficultySelector();
         });
         removeBtn.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_CLICKED, javafx.event.Event::consume);
 
-        card.getChildren().addAll(refLabel, previewLabel, diffBox, removeBtn);
+        card.getChildren().addAll(refLabel, previewLabel, diffBox, practiceBtn, removeBtn);
         return card;
     }
 
@@ -687,7 +806,7 @@ public class MemorizationPage extends VBox {
         StackPane popupOverlay = new StackPane();
         popupOverlay.getStyleClass().add("popup-overlay");
         popupOverlay.setOnMouseClicked(e -> closePopup());
-    
+
         VBox popupContainer = new VBox(8);
         popupContainer.getStyleClass().add("memorize-popup");
         popupContainer.setPadding(new Insets(10));
@@ -695,14 +814,13 @@ public class MemorizationPage extends VBox {
         popupContainer.setMinWidth(320);
         popupContainer.setMaxHeight(200);   // 👈 controls height
         popupContainer.setPrefHeight(180);  // optional fine-tune
-    
+
         Label title = new Label("Add Verse");
-        Button closeBtn = new Button("X");
-        closeBtn.setOnAction(e -> closePopup());
-    
-        HBox header = new HBox(title, closeBtn);
+        title.getStyleClass().add("popup-title");
+
+        HBox header = new HBox(title);
         header.setAlignment(Pos.CENTER_LEFT);
-    
+
         ComboBox<String> bookBox = new ComboBox<>();
         for (String book : BIBLE_BOOK_ORDER) {
             if (BIBLE.containsKey(book)) {
@@ -710,16 +828,18 @@ public class MemorizationPage extends VBox {
             }
         }
         bookBox.setPromptText("Book");
-    
+
         Spinner<Integer> chapterSpinner = new Spinner<>(1, 150, 1);
+        chapterSpinner.setEditable(true);
         Spinner<Integer> verseSpinner = new Spinner<>(1, 200, 1);
-    
+        verseSpinner.setEditable(true);
+
         chapterSpinner.setPrefWidth(90);
         verseSpinner.setPrefWidth(90);
-    
+
         Label error = new Label();
         error.setStyle("-fx-text-fill: red; -fx-font-size: 11px;");
-    
+
         Button saveBtn = new Button("Save");
         saveBtn.setOnAction(e -> {
 
@@ -795,7 +915,7 @@ public class MemorizationPage extends VBox {
             t.setDaemon(true);
             t.start();
         });
-    
+
         VBox content = new VBox(8,
             bookBox,
             new HBox(8, new Label("Ch"), chapterSpinner,
@@ -803,19 +923,69 @@ public class MemorizationPage extends VBox {
             error,
             saveBtn
         );
-    
+
         popupContainer.getChildren().addAll(header, content);
-    
+
         StackPane wrapper = new StackPane(popupContainer);
         wrapper.setAlignment(Pos.CENTER);
 
         // prevents full-screen stretching
         wrapper.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE);
-    
+
         appRoot.getChildren().addAll(popupOverlay, wrapper);
-    
-        currentClosePopupHandler = () ->
+
+        currentClosePopupHandler = () -> {
             appRoot.getChildren().removeAll(popupOverlay, wrapper);
+            appRoot.setOnKeyPressed(null);
+        };
+
+        appRoot.setOnKeyPressed(e -> {
+            if (e.getCode() == javafx.scene.input.KeyCode.ESCAPE) {
+                closePopup();
+            }
+        });
+        appRoot.requestFocus();
+    }
+
+    // Fetches verse text from bible-api.com for the given reference
+    private String fetchVerseTextFromApi(String book, int chapter, int verse) {
+        try {
+            String reference = book + " " + chapter + ":" + verse;
+            String encodedReference = URLEncoder.encode(reference, StandardCharsets.UTF_8).replace("+", "%20");
+
+            String apiUrl = "https://bible-api.com/" + encodedReference;
+
+            HttpClient client = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
+
+            HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(apiUrl))
+                .timeout(Duration.ofSeconds(10))
+                .GET()
+                .build();
+
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            if (response.statusCode() != 200) {
+                return null;
+            }
+
+            JSONParser parser = new JSONParser();
+            JSONObject json = (JSONObject) parser.parse(response.body());
+
+            Object textObj = json.get("text");
+
+            if (textObj == null) {
+                return null;
+            }
+
+            return textObj.toString().replace("\n", " ").trim();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     private void closePopup() {
