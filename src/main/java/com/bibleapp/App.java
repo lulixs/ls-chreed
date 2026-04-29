@@ -169,7 +169,7 @@ public class App extends StackPane {
                 readingPage.refreshDisplay();
             }
             case "Plans" -> contentArea.setCenter(new ReadingPlansPage());
-            case "Stats" -> contentArea.setCenter(new StatisticsPage());
+            case "Stats" -> contentArea.setCenter(new StatisticsPage(this));
             case "Memorize" -> contentArea.setCenter(new MemorizationPage(this));
         }
     }

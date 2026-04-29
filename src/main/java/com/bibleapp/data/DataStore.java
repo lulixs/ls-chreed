@@ -242,17 +242,28 @@ public class DataStore {
     /**
      * Updates the difficulty level for an existing verse, identified by its
      * composite ID. Does nothing if the ID is not found.
+     *
+     * The updated entry is moved to the end of the list so that callers (e.g.
+     * the per-book progress section) can use list order as a "recency of
+     * progress" signal — newest activity sits at the tail.
      */
     @SuppressWarnings("unchecked")
     public static void updateVerseDifficulty(String id, int difficulty) {
         JSONObject data = load();
         JSONArray arr = getOrCreateArray(data, KEY_MEMORIZATION);
-        for (Object obj : arr) {
+        JSONObject moved = null;
+        for (java.util.Iterator<Object> it = arr.iterator(); it.hasNext();) {
+            Object obj = it.next();
             if (obj instanceof JSONObject entry &&
                     id.equalsIgnoreCase(getString(entry, KEY_VERSE_ID, ""))) {
                 entry.put(KEY_VERSE_DIFFICULTY, (long) difficulty);
+                moved = entry;
+                it.remove();
                 break;
             }
+        }
+        if (moved != null) {
+            arr.add(moved);
         }
         data.put(KEY_MEMORIZATION, arr);
         save(data);
