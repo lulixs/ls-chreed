@@ -545,3 +545,66 @@
     -fx-border-color: #ef4444;
     -fx-border-width: 2;
 }
+
+/* ============================= */
+/* 🔽 COMBOBOX (Dropdown) FIX + STYLE */
+/* ============================= */
+
+/* Base combo box */
+.selector-combo {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7e2;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+    -fx-padding: 4 8 4 8;
+}
+
+/* Text inside closed dropdown */
+.selector-combo .button-cell {
+    -fx-text-fill: #1a1a1a;
+}
+
+/* Dropdown popup background */
+.combo-box-popup .list-view {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7e2;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+/* Each item */
+.combo-box-popup .list-cell {
+    -fx-text-fill: #1a1a1a;
+    -fx-padding: 6 10 6 10;
+    -fx-background-color: transparent;
+}
+
+/* 🔥 HOVER FIX (this is your main bug fix) */
+.combo-box-popup .list-cell:hover {
+    -fx-background-color: #e8f0ff;
+    -fx-text-fill: #1f3a8a; /* nice navy blue */
+}
+
+/* Selected item inside dropdown */
+.combo-box-popup .list-cell:selected {
+    -fx-background-color: #d6e4ff;
+    -fx-text-fill: #1f3a8a;
+}
+
+/* Focus glow (subtle modern feel) */
+.selector-combo:focused {
+    -fx-border-color: #4c8dff;
+    -fx-effect: dropshadow(gaussian, rgba(76,141,255,0.25), 6, 0.2, 0, 0);
+}
+
+.stats-book-card {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7e2;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.stats-book-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
