@@ -14,7 +14,7 @@ public class Difficulty {
  
         for (int i = 0; i < words.length; i++) {
             if (blankCheck.apply(i)) {
-                display[i] = BLANK;
+                display[i] = buildBlank(words[i]);
             } else {
                 display[i] = words[i];
             }
@@ -29,5 +29,19 @@ public class Difficulty {
 
     public String[] getAnswerKey() {
         return answerKey;
+    }
+
+    private String buildBlank(String word) {
+        if (word == null || word.isEmpty()) {
+            return BLANK;
+        }
+
+        StringBuilder blank = new StringBuilder(word.length());
+        for (int i = 0; i < word.length(); i++) {
+            char c = word.charAt(i);
+            blank.append(Character.isLetterOrDigit(c) ? '_' : c);
+        }
+
+        return blank.toString();
     }
 }
