@@ -606,7 +606,7 @@ public class MemorizationPage extends VBox {
         refLabel.getStyleClass().add("verse-card-reference");
         refLabel.setWrapText(true);
 
-        String preview = verse.getText();
+        /*String preview = verse.getText();
         if (preview != null && preview.length() > 60) {
             preview = preview.substring(0, 60).stripTrailing() + "…";
         }
@@ -623,7 +623,7 @@ public class MemorizationPage extends VBox {
             int selectedIndex = diffBox.getSelectionModel().getSelectedIndex();
             DataStore.updateVerseDifficulty(verse.getId(), selectedIndex + 1);
         });
-
+        */
         Button removeBtn = new Button("Remove");
         removeBtn.getStyleClass().add("remove-verse-btn");
         removeBtn.setOnAction(e -> {
@@ -631,7 +631,7 @@ public class MemorizationPage extends VBox {
             loadVerseList();
         });
 
-        card.getChildren().addAll(refLabel, previewLabel, diffBox, removeBtn);
+        card.getChildren().addAll(refLabel, removeBtn);
         return card;
     }
 
