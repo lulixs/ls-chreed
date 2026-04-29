@@ -606,24 +606,6 @@ public class MemorizationPage extends VBox {
         refLabel.getStyleClass().add("verse-card-reference");
         refLabel.setWrapText(true);
 
-        /*String preview = verse.getText();
-        if (preview != null && preview.length() > 60) {
-            preview = preview.substring(0, 60).stripTrailing() + "…";
-        }
-        Label previewLabel = new Label(preview);
-        previewLabel.getStyleClass().add("verse-card-preview");
-        previewLabel.setWrapText(true);
-
-        ComboBox<String> diffBox = new ComboBox<>();
-        diffBox.getItems().addAll(DIFFICULTY_LABELS);
-        diffBox.setMaxWidth(Double.MAX_VALUE);
-        int diffIndex = Math.max(0, Math.min(verse.getNextDifficulty(), DIFFICULTY_LABELS.length - 1));
-        diffBox.getSelectionModel().select(diffIndex);
-        diffBox.setOnAction(e -> {
-            int selectedIndex = diffBox.getSelectionModel().getSelectedIndex();
-            DataStore.updateVerseDifficulty(verse.getId(), selectedIndex + 1);
-        });
-        */
         Button removeBtn = new Button("Remove");
         removeBtn.getStyleClass().add("remove-verse-btn");
         removeBtn.setOnAction(e -> {
