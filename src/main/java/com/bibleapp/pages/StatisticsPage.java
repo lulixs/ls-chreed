@@ -5,6 +5,11 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 
+import com.bibleapp.data.DataStore;
+import com.bibleapp.data.MemorizedVerse;
+
+import java.util.*;
+
 /**
  * Statistics page with badges, streak tracking, and reading progress.
  * Two-column layout with badges on the left, streak and progress on the right.
@@ -71,7 +76,7 @@ public class StatisticsPage extends VBox {
         progressLabel.getStyleClass().add("column-header");
         progressSection.getChildren().add(progressLabel);
 
-        VBox progressContent = new VBox(10);
+        VBox progressContent = buildProgressContent();
         progressContent.getStyleClass().add("stats-progress-content");
         progressContent.setPadding(new Insets(10));
 
@@ -96,5 +101,59 @@ public class StatisticsPage extends VBox {
         VBox.setVgrow(mainContainer, Priority.ALWAYS);
 
         getChildren().addAll(title, mainContainer);
+    }
+
+    private VBox buildProgressContent() {
+
+        VBox container = new VBox(10);
+    
+        List<MemorizedVerse> verses = DataStore.getMemorizationList();
+    
+        if (verses.isEmpty()) {
+            Label empty = new Label("No memorized verses yet.");
+            empty.getStyleClass().add("popup-placeholder");
+            container.getChildren().add(empty);
+            return container;
+        }
+    
+        // Group by book
+        Map<String, List<MemorizedVerse>> byBook = new HashMap<>();
+    
+        for (MemorizedVerse v : verses) {
+            byBook.computeIfAbsent(v.getBook(), k -> new ArrayList<>()).add(v);
+        }
+    
+        for (String book : byBook.keySet()) {
+    
+            List<MemorizedVerse> bookVerses = byBook.get(book);
+    
+            int total = bookVerses.size();
+    
+            // 🔥 IMPORTANT: define "fully memorized"
+            int mastered = (int) bookVerses.stream()
+                    .filter(v -> v.getNextDifficulty() >= 4) // adjust if needed
+                    .count();
+    
+            double percent = (double) mastered / total;
+    
+            VBox card = new VBox(6);
+            card.getStyleClass().add("stats-book-card");
+            card.setPadding(new Insets(8));
+    
+            Label title = new Label(book);
+            title.getStyleClass().add("stats-book-title");
+    
+            Label countLabel = new Label(
+                    mastered + " / " + total + " memorized"
+            );
+    
+            ProgressBar bar = new ProgressBar(percent);
+            bar.setPrefWidth(250);
+    
+            card.getChildren().addAll(title, countLabel, bar);
+            container.getChildren().add(card);
+        }
+    
+        return container;
     }
 }

@@ -590,3 +590,15 @@
     -fx-border-color: #4c8dff;
     -fx-effect: dropshadow(gaussian, rgba(76,141,255,0.25), 6, 0.2, 0, 0);
 }
+
+.stats-book-card {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7e2;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.stats-book-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
