@@ -217,12 +217,6 @@
     -fx-background-color: #ffffff;
 }
 
-.combo-box-popup .list-view {
-    -fx-background-color: #ffffff;
-    -fx-border-color: #d0d7de;
-    -fx-effect: null;
-}
-
 .chapter-spinner {
     -fx-font-size: 13px;
     -fx-font-family: "Inter", "Segoe UI", sans-serif;
