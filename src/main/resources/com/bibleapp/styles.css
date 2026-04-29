@@ -545,3 +545,192 @@
     -fx-border-color: #ef4444;
     -fx-border-width: 2;
 }
+
+/* ─── Badges ──────────────────────────────────────────────────────────────── */
+
+.badges-summary {
+    -fx-font-size: 12px;
+    -fx-text-fill: #5a6372;
+}
+
+.badges-preamble {
+    -fx-font-size: 11px;
+    -fx-text-fill: #8892a0;
+    -fx-font-style: italic;
+}
+
+.badge-cell-name {
+    -fx-font-size: 11px;
+    -fx-text-fill: #2c3e50;
+    -fx-text-alignment: center;
+    -fx-alignment: top-center;
+    -fx-wrap-text: true;
+}
+
+.badge-cell-sub {
+    -fx-font-size: 10px;
+}
+.badge-cell-sub--earned {
+    -fx-text-fill: #1D9E75;
+    -fx-font-weight: bold;
+}
+.badge-cell-sub--locked {
+    -fx-text-fill: #8892a0;
+}
+
+.badges-view-all-btn {
+    -fx-background-color: #3d5a80;
+    -fx-text-fill: white;
+    -fx-font-size: 12px;
+    -fx-padding: 8 14;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+.badges-view-all-btn:hover {
+    -fx-background-color: #4f6fa3;
+}
+
+.badge-view {
+    /* JavaFX Group sizing handled in Java; nothing here. */
+}
+
+/* Locked badges read as dim/muted next to earned ones. */
+.badge-view--locked {
+    -fx-opacity: 0.55;
+}
+
+/* ─── Badges dialog ───────────────────────────────────────────────────────── */
+
+.badges-dialog {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.35), 24, 0.2, 0, 6);
+}
+
+.badges-dialog-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
+.badges-dialog-summary {
+    -fx-font-size: 12px;
+    -fx-text-fill: #6b7785;
+}
+
+.badges-dialog-close {
+    -fx-background-color: #e07a5f;
+    -fx-text-fill: white;
+    -fx-padding: 6 14;
+    -fx-background-radius: 6;
+    -fx-cursor: hand;
+}
+.badges-dialog-close:hover {
+    -fx-background-color: #ec8e72;
+}
+
+.badges-section-heading {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #3d5a80;
+    -fx-padding: 4 0 4 0;
+}
+
+.badges-dialog-scroll {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+.badges-dialog-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+/* ─── Badge toast ─────────────────────────────────────────────────────────── */
+
+.badge-toast {
+    -fx-background-color: #ffffff;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #d4af37;
+    -fx-border-width: 1.5;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 18, 0.25, 0, 4);
+}
+
+.badge-toast-heading {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #b8860b;
+}
+
+.badge-toast-name {
+    -fx-font-size: 13px;
+    -fx-text-fill: #2c3e50;
+    -fx-font-weight: bold;
+}
+
+/* ─── Verse card selection ───────────────────────────────────────────────── */
+
+.verse-card {
+    -fx-cursor: hand;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-border-color: transparent;
+    -fx-border-width: 2;
+}
+.verse-card:hover {
+    -fx-background-color: #e8eef5;
+}
+.verse-card--selected {
+    -fx-background-color: #dbe6f5;
+    -fx-border-color: #3d5a80;
+}
+
+/* ─── Memorize placeholder ───────────────────────────────────────────────── */
+
+.memorize-placeholder {
+    -fx-font-size: 14px;
+    -fx-text-fill: #6b7785;
+    -fx-text-alignment: center;
+    -fx-padding: 20;
+}
+
+/* ─── Per-book progress rows ─────────────────────────────────────────────── */
+
+.progress-row {
+    -fx-padding: 6 0 6 0;
+}
+.progress-row-name {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+.progress-row-count {
+    -fx-font-size: 11px;
+    -fx-text-fill: #6b7785;
+}
+
+/* Flat, modern progress bar.
+   The default JavaFX skin paints a beveled track and an inset bar with
+   visible padding; we strip both so the fill reaches edge-to-edge inside
+   a rounded pill-shaped track. */
+.progress-row .progress-bar {
+    -fx-pref-height: 10px;
+    -fx-min-height: 10px;
+    -fx-max-height: 10px;
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+.progress-row .progress-bar > .track {
+    -fx-background-color: #e6ebf2;
+    -fx-background-insets: 0;
+    -fx-background-radius: 5;
+    -fx-border-width: 0;
+    -fx-effect: null;
+}
+.progress-row .progress-bar > .bar {
+    -fx-background-insets: 0;
+    -fx-background-radius: 5;
+    -fx-padding: 0;
+    -fx-border-width: 0;
+}
