@@ -217,9 +217,6 @@ public class MemorizationPage extends VBox {
         HBox.setHgrow(leftColumn, Priority.NEVER);
 
         rightColumn.setMaxWidth(Double.MAX_VALUE);
-        /*rightColumn.prefWidthProperty().bind(columnsContainer.widthProperty()
-                .subtract(leftColumn.widthProperty())
-                .subtract(columnsContainer.spacingProperty()));*/
 
         columnsContainer.getChildren().addAll(leftColumn, rightColumn);
         VBox.setVgrow(columnsContainer, Priority.ALWAYS);
