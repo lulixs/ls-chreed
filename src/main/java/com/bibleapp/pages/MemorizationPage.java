@@ -36,6 +36,15 @@ import javafx.scene.text.TextFlow;
 
 public class MemorizationPage extends VBox {
 
+    private static final String WORD_STYLE_BASE =
+        "-fx-font-size: 16px; -fx-font-family: \"Consolas\", \"Courier New\", monospace; -fx-padding: 1 3 1 3; -fx-background-radius: 3px;";
+    private static final String WORD_STYLE_DEFAULT =
+        WORD_STYLE_BASE + "-fx-text-fill: #333333; -fx-background-color: transparent;";
+    private static final String WORD_STYLE_PAST =
+        WORD_STYLE_BASE + "-fx-text-fill: #888888; -fx-background-color: transparent;";
+    private static final String WORD_STYLE_ACTIVE =
+        WORD_STYLE_BASE + "-fx-font-weight: bold; -fx-text-fill: #000000; -fx-background-color: #FFF3CD;";
+
     private static final String[] DIFFICULTY_LABELS = {
         "Copy-down",
         "Every-other A",
@@ -340,27 +349,24 @@ public class MemorizationPage extends VBox {
         wordLabels.clear();
         currentWordIndex = 0;
 
-        // TextFlow displays verse
+        String[] words = difficulty.getDisplayVerse();
+
         TextFlow verseFlow = new TextFlow();
         verseFlow.setLineSpacing(6);
         verseFlow.getStyleClass().add("verse-text-flow");
-
-        String[] words = difficulty.getDisplayVerse();
         for (int i = 0; i < words.length; i++) {
-
-            // Adds word to verse display
             Label wordLabel = new Label(words[i]);
-            wordLabel.setStyle("-fx-font-size: 16px; -fx-text-fill: #333333;");
+            wordLabel.setStyle(WORD_STYLE_DEFAULT);
             wordLabels.add(wordLabel);
+
             verseFlow.getChildren().add(wordLabel);
 
-            // Add a space between words
             if (i < words.length - 1) {
                 Label space = new Label(" ");
                 space.setStyle("-fx-font-size: 16px;");
                 verseFlow.getChildren().add(space);
             }
-        }   
+        }
 
         wordCorrect = new boolean[words.length];
 
@@ -394,11 +400,11 @@ public class MemorizationPage extends VBox {
         for (int i = 0; i < wordLabels.size(); i++) {
             Label lbl = wordLabels.get(i);
             if (i < index) {
-                lbl.setStyle("-fx-font-size: 16px; -fx-text-fill: #888888;");
+                lbl.setStyle(WORD_STYLE_PAST);
             } else if (i == index) {
-                lbl.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #000000; -fx-background-color: #FFF3CD; -fx-background-radius: 3px; -fx-padding: 1 3 1 3;");
+                lbl.setStyle(WORD_STYLE_ACTIVE);
             } else {
-                lbl.setStyle("-fx-font-size: 16px; -fx-text-fill: #333333;");
+                lbl.setStyle(WORD_STYLE_DEFAULT);
             }
         }
     }
@@ -465,10 +471,9 @@ public class MemorizationPage extends VBox {
 
             // If correct, the word will be green, otherwise orange
             String color = wordCorrect[i] ? "#1D9E75" : "#D85A30";
-            wordLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: " + color + ";");
+            wordLabel.setStyle(WORD_STYLE_BASE + "-fx-font-weight: bold; -fx-text-fill: " + color + "; -fx-background-color: transparent;");
             verseReview.getChildren().add(wordLabel);
 
-            // Adds spaces in between words
             if (i < key.length - 1) {
                 Label space = new Label(" ");
                 space.setStyle("-fx-font-size: 16px;");
