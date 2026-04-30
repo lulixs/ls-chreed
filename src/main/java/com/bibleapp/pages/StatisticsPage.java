@@ -167,51 +167,6 @@ public class StatisticsPage extends VBox {
         return rightColumn;
     }
 
-    // =========================================================================
-    // Progress section: per-book bars sorted by recency of activity
-    // =========================================================================
-
-    /**
-     * One bar per book the user has touched. Books are ordered by recency of
-     * activity — DataStore appends/moves the most recently changed entry to
-     * the tail of the memorization list, so the index of the LATEST entry
-     * belonging to each book is a "last activity" signal.
-     */
-    private VBox buildProgressContent() {
-        VBox content = new VBox(10);
-
-        List<MemorizedVerse> verses = DataStore.getMemorizationList();
-        if (verses.isEmpty()) {
-            Label empty = new Label("Add verses on the Read tab to start tracking progress.");
-            empty.getStyleClass().add("badges-preamble");
-            empty.setWrapText(true);
-            content.getChildren().add(empty);
-            return content;
-        }
-
-        // book -> most recent index, fully-memorized count
-        Map<String, Integer> lastIndexByBook = new HashMap<>();
-        Map<String, Integer> fullyMemorizedByBook = new HashMap<>();
-        for (int i = 0; i < verses.size(); i++) {
-            MemorizedVerse v = verses.get(i);
-            lastIndexByBook.put(v.getBook(), i);
-            if (v.getNextDifficulty() >= 4) {
-                fullyMemorizedByBook.merge(v.getBook(), 1, Integer::sum);
-            }
-        }
-
-        List<String> books = new ArrayList<>(lastIndexByBook.keySet());
-        books.sort((a, b) -> Integer.compare(lastIndexByBook.get(b), lastIndexByBook.get(a)));
-
-        for (String book : books) {
-            int memorized = fullyMemorizedByBook.getOrDefault(book, 0);
-            int total = BadgeRegistry.totalVersesIn(book);
-            content.getChildren().add(buildBookProgressRow(book, memorized, total));
-        }
-
-        return content;
-    }
-
     private VBox buildBookProgressRow(String book, int memorized, int total) {
         VBox row = new VBox(4);
         row.getStyleClass().add("progress-row");
