@@ -216,7 +216,8 @@ public class MemorizationPage extends VBox {
         HBox.setHgrow(rightColumn, Priority.ALWAYS);
         HBox.setHgrow(leftColumn, Priority.NEVER);
 
-        rightColumn.setMaxWidth(Double.MAX_VALUE);
+        rightColumn.setMaxWidth(Double.MAX_VALUE); // Note that while this alone is not causing the issue
+        // I think with how it interacts with the memorization list fix code does.
 
         columnsContainer.getChildren().addAll(leftColumn, rightColumn);
         VBox.setVgrow(columnsContainer, Priority.ALWAYS);
