@@ -750,7 +750,7 @@ public class MemorizationPage extends VBox {
         refLabel.setWrapText(true);
         refLabel.setMaxWidth(Double.MAX_VALUE);
 
-        String preview = verse.getText();
+        /* String preview = verse.getText();
         if (preview != null && preview.length() > 60) {
             preview = preview.substring(0, 60).stripTrailing() + "…";
         }
@@ -770,6 +770,8 @@ public class MemorizationPage extends VBox {
         });
         // Don't let interacting with the dropdown also "select" the card.
         diffBox.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_CLICKED, javafx.event.Event::consume);
+        */
+       // Commented it out before getting rid of it, to see what happens
 
         // Explicit Practice button — avoids all JavaFX event-bubbling issues
         // with ComboBox/Button consuming mouse clicks on the card container.
@@ -797,7 +799,7 @@ public class MemorizationPage extends VBox {
         });
         removeBtn.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_CLICKED, javafx.event.Event::consume);
 
-        card.getChildren().addAll(refLabel, previewLabel, diffBox, practiceBtn, removeBtn);
+        card.getChildren().addAll(refLabel, practiceBtn, removeBtn);
         return card;
     }
 
