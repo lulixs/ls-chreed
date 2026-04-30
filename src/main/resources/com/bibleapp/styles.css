@@ -540,6 +540,24 @@
     -fx-border-width: 2;
 }
 
+
+/* ============================= */
+/* 🔽 This is for the statisticsPage
+/* ============================= */
+
+.stats-book-card {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d0d7e2;
+    -fx-border-radius: 6px;
+    -fx-background-radius: 6px;
+}
+
+.stats-book-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+
 /* ─── Badges ──────────────────────────────────────────────────────────────── */
 
 .badges-summary {
