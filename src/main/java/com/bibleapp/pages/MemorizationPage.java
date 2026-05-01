@@ -750,29 +750,6 @@ public class MemorizationPage extends VBox {
         refLabel.setWrapText(true);
         refLabel.setMaxWidth(Double.MAX_VALUE);
 
-        String preview = verse.getText();
-        if (preview != null && preview.length() > 60) {
-            preview = preview.substring(0, 60).stripTrailing() + "…";
-        }
-        Label previewLabel = new Label(preview);
-        previewLabel.getStyleClass().add("verse-card-preview");
-        previewLabel.setWrapText(true);
-        previewLabel.setMaxWidth(Double.MAX_VALUE);
-
-        ComboBox<String> diffBox = new ComboBox<>();
-        diffBox.getItems().addAll(DIFFICULTY_LABELS);
-        diffBox.setMaxWidth(Double.MAX_VALUE);
-        int diffIndex = Math.max(0, Math.min(verse.getNextDifficulty(), DIFFICULTY_LABELS.length - 1));
-        diffBox.getSelectionModel().select(diffIndex);
-        diffBox.setOnAction(e -> {
-            int selectedIndex = diffBox.getSelectionModel().getSelectedIndex();
-            DataStore.updateVerseDifficulty(verse.getId(), selectedIndex + 1);
-        });
-        // Don't let interacting with the dropdown also "select" the card.
-        diffBox.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_CLICKED, javafx.event.Event::consume);
-
-        // Explicit Practice button — avoids all JavaFX event-bubbling issues
-        // with ComboBox/Button consuming mouse clicks on the card container.
         Button practiceBtn = new Button("Practice");
         practiceBtn.getStyleClass().add("add-verse-btn");
         practiceBtn.setMaxWidth(Double.MAX_VALUE);
@@ -797,7 +774,7 @@ public class MemorizationPage extends VBox {
         });
         removeBtn.addEventFilter(javafx.scene.input.MouseEvent.MOUSE_CLICKED, javafx.event.Event::consume);
 
-        card.getChildren().addAll(refLabel, previewLabel, diffBox, practiceBtn, removeBtn);
+        card.getChildren().addAll(refLabel, practiceBtn, removeBtn);
         return card;
     }
 
